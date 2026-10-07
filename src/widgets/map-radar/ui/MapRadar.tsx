@@ -54,13 +54,13 @@ export const MapRadar: React.FC = () => {
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-200 bg-white px-4 py-2.5 text-[11px] font-semibold text-slate-500">
         <div className="flex items-center gap-1">
-          <div className="h-2.5 w-2.5 rounded-full bg-blue-500" /> Выявлено ИИ (Новый)
+          <div className="h-2.5 w-2.5 rounded-full bg-blue-500" /> Новые инциденты
         </div>
         <div className="flex items-center gap-1">
           <div className="h-2.5 w-2.5 rounded-full bg-amber-500" /> В работе у УК
         </div>
         <div className="flex items-center gap-1">
-          <div className="h-2.5 w-2.5 rounded-full bg-purple-500" /> На проверке качества
+          <div className="h-2.5 w-2.5 rounded-full bg-purple-500" /> На верификации
         </div>
         <div className="flex items-center gap-1">
           <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Нарушение устранено

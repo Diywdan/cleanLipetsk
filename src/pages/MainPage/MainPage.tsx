@@ -11,7 +11,7 @@ export const MainPage: React.FC = () => {
   const selectedIncident = useIncidentStore((state) => state.selectedIncident);
   const currentUser = useAuthStore((state) => state.currentUser);
   
-  // 🎛️ РЕАКТИВНЫЙ СТEЙТ ПЕРЕКЛЮЧЕНИЯ ЭКРАНОВ: ГИС-Вид по умолчанию
+  // РЕАКТИВНЫЙ СТEЙТ ПЕРЕКЛЮЧЕНИЯ ЭКРАНОВ: ГИС-Вид по умолчанию
   const [activeTab, setActiveTab] = useState<'map_view' | 'analytics'>('map_view');
 
   return (

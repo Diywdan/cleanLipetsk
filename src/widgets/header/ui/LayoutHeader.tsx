@@ -7,7 +7,7 @@ export const LayoutHeader: React.FC = () => {
 
   return (
     <>
-      {/* 🏙️ ГЛАВНАЯ СИСТЕМНАЯ ШАПКА */}
+      {/* ГЛАВНАЯ СИСТЕМНАЯ ШАПКА */}
       <header className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shadow-md border-b border-slate-800">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-600 rounded-lg shadow-inner font-black tracking-wider text-sm">ЦК</div>
@@ -28,7 +28,7 @@ export const LayoutHeader: React.FC = () => {
         </div>
       </header>
 
-      {/* 🛠️ ПАНЕЛЬ РАЗРАБОТЧИКА (DEV TOOLBAR) */}
+      {/* ПАНЕЛЬ РАЗРАБОТЧИКА (DEV TOOLBAR) */}
       <div className="bg-blue-50 border-b border-blue-100 px-6 py-2 flex flex-wrap items-center gap-4 text-xs font-semibold text-blue-900 shadow-xs">
         <div className="flex items-center gap-1 text-blue-700">
           <ShieldCheck className="w-4 h-4" />

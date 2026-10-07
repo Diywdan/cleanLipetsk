@@ -316,12 +316,12 @@ export const UniversalIncidentCard: React.FC<TProps> = ({ userRole}) => {
 
             {/* СЦЕНАРИЙ 3: В системе ИНСПЕКТОР, УК прислала отчет и идет верификация качества */}
             {userRole === "INSPECTOR" && status === "VERIFICATION" && (
-              <div className="flex items-center justify-between gap-4 bg-purple-50/50 p-3 rounded-lg border border-purple-100 w-full">
+              <div className="flex flex-col items-center justify-between gap-4 bg-purple-50/50 p-3 rounded-lg border border-purple-100 w-full h-auto">
                 <span className="text-xs font-semibold text-purple-700 flex items-center gap-1.5">
-                  <ArrowRightLeft className="w-4 h-4" /> Сверните вкладки медиа
+                  <ArrowRightLeft className="w-4 h-4" /> Сверьте вкладки медиа
                   плеера ("Было / Стало") для верификации:
                 </span>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 w-full">
                   <Button
                     variant="outline"
                     onClick={() => rejectIncident(id)}
