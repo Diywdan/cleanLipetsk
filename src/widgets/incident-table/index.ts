@@ -1,0 +1,1 @@
+export { IncidentSmartTable } from './ui/IncidentSmartTable';
