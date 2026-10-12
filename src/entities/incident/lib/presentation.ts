@@ -1,21 +1,35 @@
 import type { IncidentSource, IncidentStatus } from '../types';
 
 // Один словарь вида статусов на всё приложение: тег в таблице и карточке,
-// маркер на карте, легенда и графики берут цвета отсюда.
-// text — для надписей (контраст 4.5+ на bg), dot — для точек, маркеров и графиков.
+// маркер на карте, легенда и графики. Цвета — переменные темы (styles/themes.css),
+// поэтому статус перекрашивается вместе с темой.
+// text — надписи на подложке bg (контраст 4.5+), dot — точки, маркеры, графики.
 export interface StatusMeta {
   label: string;
+  short: string;
+  cssVar: string;  // имя переменной точки, для мест, где нужен реальный цвет (SVG)
   text: string;
   bg: string;
   dot: string;
 }
 
+function meta(label: string, short: string, key: string): StatusMeta {
+  return {
+    label,
+    short,
+    cssVar: `--st-${key}`,
+    text: `var(--st-${key}-fg)`,
+    bg: `var(--st-${key}-bg)`,
+    dot: `var(--st-${key})`,
+  };
+}
+
 export const STATUS_META: Record<IncidentStatus, StatusMeta> = {
-  NEW: { label: 'Новое', text: '#0D4CD3', bg: '#E8EFFC', dot: '#0D4CD3' },
-  IN_PROGRESS: { label: 'В работе', text: '#8A5300', bg: '#FFF3DC', dot: '#E89B0C' },
-  VERIFICATION: { label: 'На проверке', text: '#5B3FB0', bg: '#EFEBFA', dot: '#7B61D1' },
-  CLOSED: { label: 'Устранено', text: '#0A6B34', bg: '#E5F4EB', dot: '#12A150' },
-  KNM_ESCALATION: { label: 'Передано на КНМ', text: '#BE1B33', bg: '#FCEBED', dot: '#EE3F58' },
+  NEW: meta('Новое', 'Новые', 'new'),
+  IN_PROGRESS: meta('В работе', 'В работе', 'work'),
+  VERIFICATION: meta('На проверке', 'Проверка', 'check'),
+  CLOSED: meta('Устранено', 'Устранено', 'done'),
+  KNM_ESCALATION: meta('Передано на КНМ', 'КНМ', 'knm'),
 };
 
 export const STATUS_ORDER: IncidentStatus[] = [
@@ -63,4 +77,9 @@ export function typoQuotes(text: string): string {
 
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU');
+}
+
+// «Инспектор ДРТ» → «инспектор ДРТ»: аббревиатуры остаются заглавными
+export function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
 }

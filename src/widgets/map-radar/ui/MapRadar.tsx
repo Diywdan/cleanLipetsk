@@ -9,13 +9,42 @@ declare global {
   }
 }
 
-export const MapRadar: React.FC = () => {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-   // 1. Инициализируем карту
-  const { mapReady, error, mapRef } = useYandexMap(mapContainerRef);
+interface TProps {
+  // chrome — карточка с заголовком и легендой (базовая тема);
+  // без него — только карта, раскладка обрамляет её сама
+  chrome?: boolean;
+  className?: string;
+}
 
-  // 2. Одной строчкой делегируем управление маркерами новому хуку
+// Сама карта с маркерами. Пересоздаётся при смене темы (key в раскладке),
+// чтобы зоны УК взяли цвета новой темы.
+const MapCanvas: React.FC<{ className?: string }> = ({ className = '' }) => {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const { mapReady, error, mapRef } = useYandexMap(mapContainerRef);
   useIncidentMarkers(mapReady, mapRef);
+
+  return (
+    <div className={`relative overflow-hidden bg-muted ${className}`}>
+      {/* Пустой узел только для Яндекса — React сюда children не кладёт */}
+      <div ref={mapContainerRef} className="map-base absolute inset-0" />
+
+      {error && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 bg-muted px-6 text-center">
+          <span className="text-[15px] font-medium text-foreground">Карта недоступна</span>
+          <span className="max-w-md text-[13px] text-muted-foreground">{error}</span>
+        </div>
+      )}
+      {!error && !mapReady && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center text-[14px] text-muted-foreground">
+          Загрузка карты…
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const MapRadar: React.FC<TProps> = ({ chrome = true, className = '' }) => {
+  if (!chrome) return <MapCanvas className={className} />;
 
   return (
     <section className="flex shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
@@ -24,32 +53,13 @@ export const MapRadar: React.FC = () => {
         <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
           {STATUS_ORDER.map((status) => (
             <li key={status} className="flex items-center gap-1.5">
-              <span
-                className="size-2.5 rounded-full"
-                style={{ backgroundColor: STATUS_META[status].dot }}
-              />
+              <span className="size-2.5 rounded-full" style={{ backgroundColor: STATUS_META[status].dot }} />
               {STATUS_META[status].label}
             </li>
           ))}
         </ul>
       </div>
-
-      <div className="relative h-[420px] w-full bg-muted">
-        {/* Пустой узел только для Яндекса — React сюда children не кладёт */}
-        <div ref={mapContainerRef} className="map-muted absolute inset-0" />
-
-        {error && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 bg-muted px-6 text-center">
-            <span className="text-[15px] font-medium text-foreground">Карта недоступна</span>
-            <span className="max-w-md text-[13px] text-muted-foreground">{error}</span>
-          </div>
-        )}
-        {!error && !mapReady && (
-          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-muted text-[14px] text-muted-foreground">
-            Загрузка карты…
-          </div>
-        )}
-      </div>
+      <MapCanvas className={`h-[420px] w-full ${className}`} />
     </section>
   );
 };

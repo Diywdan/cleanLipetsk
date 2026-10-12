@@ -16,6 +16,10 @@ import {
 import { SOURCE_TITLE, formatDateTime, formatDeadline, typoQuotes } from "../lib/presentation";
 import { isDeadlineFixed, resolveDeadlineHours } from "../lib/sla";
 import type { UserRole } from "@/entities/user/types";
+import { useStandStore } from "@/shared/theme/standStore";
+import { DispatchCard } from "./card/DispatchCard";
+import { DossierCard } from "./card/DossierCard";
+import { ProCard } from "./card/ProCard";
 
 interface TProps {
   userRole: UserRole;
@@ -37,7 +41,7 @@ const Field: React.FC<{ label: string; children: React.ReactNode; wide?: boolean
   </div>
 );
 
-export const UniversalIncidentCard: React.FC<TProps> = ({ userRole }) => {
+const GosCard: React.FC<TProps> = ({ userRole }) => {
   // 1. Достаем из Zustand-стора текущий выбранный инцидент и экшены маршрутной карты
   const {
     selectedIncident,
@@ -338,4 +342,13 @@ export const UniversalIncidentCard: React.FC<TProps> = ({ userRole }) => {
       {actions && <footer className="border-t border-border bg-muted px-5 py-4">{actions}</footer>}
     </article>
   );
+};
+
+// Карточка обращения в исполнении текущей темы стенда
+export const UniversalIncidentCard: React.FC<TProps> = ({ userRole }) => {
+  const theme = useStandStore((s) => s.theme);
+  if (theme === "dispatch") return <DispatchCard role={userRole} />;
+  if (theme === "dossier") return <DossierCard role={userRole} />;
+  if (theme === "pro") return <ProCard role={userRole} />;
+  return <GosCard userRole={userRole} />;
 };

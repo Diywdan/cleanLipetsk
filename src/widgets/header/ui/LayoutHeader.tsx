@@ -33,40 +33,11 @@ function initials(name: string): string {
 }
 
 export const LayoutHeader: React.FC<TProps> = ({ activeTab, onTabChange }) => {
-  const { currentUser, switchDevRole } = useAuthStore();
+  const currentUser = useAuthStore((s) => s.currentUser);
 
-  const roleButtons: { role: UserRole; title: string; onClick: () => void }[] = [
-    { role: 'INSPECTOR', title: 'Инспектор ДРТ', onClick: () => switchDevRole('INSPECTOR', 'DRT') },
-    { role: 'UK', title: 'Мастер УК', onClick: () => switchDevRole('UK', 'DRT', 'УК "Левобережная"') },
-    { role: 'ADMIN', title: 'Руководство', onClick: () => switchDevRole('ADMIN', 'DRT') },
-  ];
-
+  // Роли и тема переключаются в полосе стенда (StandBar) — здесь только шапка
   return (
     <div className="shrink-0">
-      {/* Демонстрационный стенд: роли переключаются без входа, данные условные */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-ink px-4 py-1.5 md:px-6 text-[13px] text-white/75">
-        <span className="hidden sm:inline">Демонстрационный стенд · данные условные</span>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="hidden sm:inline">Смотреть как:</span>
-          <div className="flex rounded-md bg-white/10 p-0.5">
-            {roleButtons.map((b) => (
-              <button
-                key={b.role}
-                type="button"
-                onClick={b.onClick}
-                className={`cursor-pointer rounded px-2.5 py-0.5 transition-colors ${
-                  currentUser?.role === b.role
-                    ? 'bg-white text-ink'
-                    : 'text-white/80 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {b.title}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <header className="flex h-16 items-stretch gap-4 border-b border-border bg-card px-4 md:gap-8 md:px-6">
         <div className="flex items-center gap-3">
           <div className="grid size-10 place-items-center rounded-lg bg-primary text-primary-foreground">

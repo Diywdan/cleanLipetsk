@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
+import { useFilterStore, useFilteredIncidents, type IncidentFilters, type PeriodFilter } from '@/entities/incident/model/filterStore';
 import { getStatusBadge } from '@/entities/incident/lib/cardUtils';
 import { getPrimaryOrganizationName, getRecidivismCount } from '@/entities/incident/lib/responsibles';
 import { STATUS_META, STATUS_ORDER, formatDate, formatDateTime, typoQuotes } from '@/entities/incident/lib/presentation';
@@ -26,55 +27,14 @@ const FILTER_ITEM = 'text-[14px]';
 const TH = 'h-10 text-[13px] font-medium text-muted-foreground';
 
 export const IncidentSmartTable: React.FC = () => {
-  // 1. Достаем массив инцидентов и управление выбором из нашего Zustand-стора
-  const { incidents, selectedIncident, selectIncident } = useIncidentStore();
+  const { selectedIncident, selectIncident } = useIncidentStore();
 
-  // ЛОКАЛЬНЫЕ СТЕЙТЫ ДЛЯ РАСШИРЕННОЙ ФИЛЬТРАЦИИ
-  const [searchQuery, setSearchQuery] = useState<string>(''); // поиск по адресу
-  const [searchUk, setSearchUk] = useState<string>('');       // поиск по названию УК
-  const [selectedUprava, setSelectedUprava] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all');
+  // Фильтры общие с картой и лентами других тем — стор filterStore
+  const filters = useFilterStore();
+  const filteredIncidents = useFilteredIncidents();
 
-  // Генерируем массив из 19 управ для выпадающего списка согласно регламенту ДРТ
+  // 19 управ Липецка для выпадающего списка согласно регламенту ДРТ
   const lipetskUpravas = Array.from({ length: 19 }, (_, i) => i + 1);
-
-  // СКВОЗНАЯ ФИЛЬТРАЦИЯ: Фильтруем одновременно по пяти ведомственным параметрам
-  const filteredIncidents = incidents.filter((incident) => {
-    // 1. Проверка по адресу
-    const matchesSearch = incident.location.address.toLowerCase().includes(searchQuery.toLowerCase());
-
-    // 2. Проверка по названию любой ответственной организации
-    const matchesUk = incident.responsibles.some((r) =>
-      r.organization.name.toLowerCase().includes(searchUk.toLowerCase())
-    );
-
-    // 3. Проверка по 19 Управам Липецка
-    const matchesUprava = selectedUprava === 'all' || incident.location.upravaId === Number(selectedUprava);
-
-    // 4. Проверка по стадиям контроля
-    const matchesStatus = selectedStatus === 'all' || incident.status === selectedStatus;
-
-    // 5. Проверка по дате регистрации
-    let matchesDate = true;
-    if (selectedDateFilter !== 'all') {
-      const createdAt = new Date(incident.timeline.createdAt).getTime();
-      const now = Date.now();
-      const oneDayMs = 24 * 60 * 60 * 1000;
-
-      if (selectedDateFilter === 'today') {
-        const createdDateStr = new Date(incident.timeline.createdAt).toDateString();
-        const nowDateStr = new Date().toDateString();
-        matchesDate = createdDateStr === nowDateStr;
-      } else if (selectedDateFilter === '3days') {
-        matchesDate = (now - createdAt) <= (3 * oneDayMs);
-      } else if (selectedDateFilter === 'week') {
-        matchesDate = (now - createdAt) <= (7 * oneDayMs);
-      }
-    }
-
-    return matchesSearch && matchesUk && matchesUprava && matchesStatus && matchesDate;
-  });
 
   return (
     <section className="flex w-full shrink-0 flex-col rounded-lg border border-border bg-card">
@@ -92,8 +52,8 @@ export const IncidentSmartTable: React.FC = () => {
             <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
             <Input
               placeholder="Адрес, например «Космонавтов»"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={filters.query}
+              onChange={(e) => filters.set({ query: e.target.value })}
               className="h-10 pl-9 text-[14px]"
               aria-label="Поиск по адресу"
             />
@@ -102,8 +62,8 @@ export const IncidentSmartTable: React.FC = () => {
             <Building2 className="absolute left-3 top-3 size-4 text-muted-foreground" />
             <Input
               placeholder="Ответственная организация"
-              value={searchUk}
-              onChange={(e) => setSearchUk(e.target.value)}
+              value={filters.org}
+              onChange={(e) => filters.set({ org: e.target.value })}
               className="h-10 pl-9 text-[14px]"
               aria-label="Поиск по ответственной организации"
             />
@@ -111,7 +71,7 @@ export const IncidentSmartTable: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Select value={selectedUprava} onValueChange={setSelectedUprava}>
+          <Select value={filters.uprava} onValueChange={(v) => filters.set({ uprava: v })}>
             <SelectTrigger className={FILTER_TRIGGER} aria-label="Управа">
               <SelectValue placeholder="Управа" />
             </SelectTrigger>
@@ -125,7 +85,7 @@ export const IncidentSmartTable: React.FC = () => {
             </SelectContent>
           </Select>
 
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <Select value={filters.status} onValueChange={(v) => filters.set({ status: v as IncidentFilters['status'] })}>
             <SelectTrigger className={FILTER_TRIGGER} aria-label="Статус">
               <SelectValue placeholder="Статус" />
             </SelectTrigger>
@@ -139,7 +99,7 @@ export const IncidentSmartTable: React.FC = () => {
             </SelectContent>
           </Select>
 
-          <Select value={selectedDateFilter} onValueChange={setSelectedDateFilter}>
+          <Select value={filters.period} onValueChange={(v) => filters.set({ period: v as PeriodFilter })}>
             <SelectTrigger className={FILTER_TRIGGER} aria-label="Период поступления">
               <SelectValue placeholder="Период" />
             </SelectTrigger>

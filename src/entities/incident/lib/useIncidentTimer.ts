@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useIncidentStore } from '../model/incidentStore';
 
 interface UseIncidentTimerResult {
-  formattedTime: string; // Строка вида "23:59:45" или "СРОК ИСТЕК"
+  formattedTime: string; // Строка вида "23:59:45" или "Срок истёк"
+  msLeft: number;        // Сколько осталось, мс (0 — срок вышел)
   isExpired: boolean;    // Флаг просрочки для смены стилей UI
   slaLabel: string;
 }
@@ -82,6 +83,7 @@ export function useIncidentTimer(incidentId: string, deadlineAt?: string, status
 
   return {
     formattedTime: formatTime(timeLeft),
+    msLeft: timeLeft,
     isExpired: timeLeft <= 0 && !!deadlineAt && status !== 'CLOSED',
     slaLabel
   };

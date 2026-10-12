@@ -1,0 +1,270 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Токены тем демонстрационного стенда.
+   Компоненты красятся только через эти переменные (bg-card, text-danger,
+   var(--st-new)…), поэтому тема меняется одним атрибутом data-theme на <html>.
+   Селектор :root[data-theme] сильнее, чем .dark из shadcn, — порядок не важен.
+
+   Статусы: --st-x — точка/маркер/график, --st-x-bg — подложка тега,
+   --st-x-fg — текст тега (контраст к своей подложке ≥ 4.5).
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Базовая: палитра Госуслуг ─────────────────────────────────────────── */
+:root,
+:root[data-theme="gos"] {
+  --background: #EEF3F8;
+  --foreground: #0B1F33;
+  --card: #FFFFFF;
+  --card-foreground: #0B1F33;
+  --popover: #FFFFFF;
+  --popover-foreground: #0B1F33;
+  --primary: #0D4CD3;
+  --primary-foreground: #FFFFFF;
+  --secondary: #E8EFFC;
+  --secondary-foreground: #0D4CD3;
+  --muted: #F5F7FA;
+  --muted-foreground: #5C6B7A;
+  --accent: #F5F7FA;
+  --accent-foreground: #0B1F33;
+  --destructive: #BE1B33;
+  --border: #DCE3EB;
+  --input: #C9D3DE;
+  --ring: #0D4CD3;
+  --radius: 0.5rem;
+
+  --ink: #0B1F33;
+  --danger: #BE1B33;
+  --success: #0A6B34;
+  --warning: #8A5300;
+
+  --st-new: #0D4CD3;   --st-new-bg: #E8EFFC;   --st-new-fg: #0D4CD3;
+  --st-work: #E89B0C;  --st-work-bg: #FFF3DC;  --st-work-fg: #8A5300;
+  --st-check: #7B61D1; --st-check-bg: #EFEBFA; --st-check-fg: #5B3FB0;
+  --st-knm: #EE3F58;   --st-knm-bg: #FCEBED;   --st-knm-fg: #BE1B33;
+  --st-done: #12A150;  --st-done-bg: #E5F4EB;  --st-done-fg: #0A6B34;
+
+  --font-ui: 'Golos Text Variable', 'Segoe UI', Arial, sans-serif;
+  --font-display: var(--font-ui);
+  --font-num: var(--font-ui);
+
+  --chart-1: #0D4CD3;
+  --chart-2: #EE3F58;
+  --chart-grid: #EEF3F8;
+  --chart-axis: #5C6B7A;
+  --zone-1: #0D4CD3;
+  --zone-2: #5B3FB0;
+  --map-filter: saturate(0.25) brightness(1.03);
+  --panel-shadow: none;
+
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #0B1F33;
+  --sidebar-primary: #0D4CD3;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F5F7FA;
+  --sidebar-accent-foreground: #0B1F33;
+  --sidebar-border: #DCE3EB;
+  --sidebar-ring: #0D4CD3;
+}
+
+/* ── Диспетчерская: ситуационный центр ─────────────────────────────────────
+   Почти чёрный синий, стеклянные панели над картой, данные светятся.
+   Бирюза — «живое» и новое, малиновый — тревога. */
+:root[data-theme="dispatch"] {
+  --background: #050A14;
+  --foreground: #E4ECF7;
+  --card: rgba(10, 18, 34, 0.78);
+  --card-foreground: #E4ECF7;
+  --popover: #0C1528;
+  --popover-foreground: #E4ECF7;
+  --primary: #38D3F2;
+  --primary-foreground: #031019;
+  --secondary: rgba(56, 211, 242, 0.12);
+  --secondary-foreground: #8BE6F8;
+  --muted: rgba(148, 178, 220, 0.06);
+  --muted-foreground: #8C9BB2;
+  --accent: rgba(148, 178, 220, 0.08);
+  --accent-foreground: #E4ECF7;
+  --destructive: #FF4F8B;
+  --border: rgba(148, 178, 220, 0.14);
+  --input: rgba(148, 178, 220, 0.22);
+  --ring: #38D3F2;
+  --radius: 0.75rem;
+
+  --ink: #02060D;
+  --danger: #FF6B9D;
+  --success: #4BE3A6;
+  --warning: #FFC46B;
+
+  --st-new: #38D3F2;   --st-new-bg: rgba(56, 211, 242, 0.14);  --st-new-fg: #8BE6F8;
+  --st-work: #FFB547;  --st-work-bg: rgba(255, 181, 71, 0.14); --st-work-fg: #FFCF85;
+  --st-check: #A78BFA; --st-check-bg: rgba(167, 139, 250, 0.16); --st-check-fg: #C9B8FD;
+  --st-knm: #FF3D7F;   --st-knm-bg: rgba(255, 61, 127, 0.16);  --st-knm-fg: #FF8DB3;
+  --st-done: #34D399;  --st-done-bg: rgba(52, 211, 153, 0.14); --st-done-fg: #7EE6BF;
+
+  --font-ui: 'Golos Text Variable', 'Segoe UI', Arial, sans-serif;
+  --font-display: 'Golos Text Variable', 'Segoe UI', sans-serif;
+  --font-num: 'JetBrains Mono Variable', Consolas, monospace;
+
+  --chart-1: #38D3F2;
+  --chart-2: #FF3D7F;
+  --chart-grid: rgba(148, 178, 220, 0.10);
+  --chart-axis: #8C9BB2;
+  --zone-1: #38D3F2;
+  --zone-2: #A78BFA;
+  /* Светлая схема Яндекса → тёмная ночная: инверсия, разворот оттенка, холодный тон */
+  --map-filter: invert(1) hue-rotate(180deg) grayscale(0.55) brightness(0.78) contrast(1.12) sepia(0.18) hue-rotate(175deg) saturate(1.6);
+  --panel-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ── Досье: сводка в газетной манере ───────────────────────────────────────
+   Бумага и чернила, PT Serif в заголовках и цифрах, тонкие линейки,
+   красный — как штамп, тёмно-синий — как чернила ручки. */
+:root[data-theme="dossier"] {
+  --background: #EDE8DE;
+  --foreground: #1D1B18;
+  --card: #FBF8F1;
+  --card-foreground: #1D1B18;
+  --popover: #FBF8F1;
+  --popover-foreground: #1D1B18;
+  --primary: #1F3A5F;
+  --primary-foreground: #FBF8F1;
+  --secondary: #E4DDCF;
+  --secondary-foreground: #1F3A5F;
+  --muted: #F3EEE4;
+  --muted-foreground: #6A6359;
+  --accent: #F3EEE4;
+  --accent-foreground: #1D1B18;
+  --destructive: #9C1C1C;
+  --border: #D3C9B7;
+  --input: #B7AB96;
+  --ring: #1F3A5F;
+  --radius: 0.125rem;
+
+  --ink: #1D1B18;
+  --danger: #9C1C1C;
+  --success: #2C6638;
+  --warning: #8A4F06;
+
+  --st-new: #1F3A5F;   --st-new-bg: #E1E6EE;   --st-new-fg: #1F3A5F;
+  --st-work: #B36B0B;  --st-work-bg: #F4E6CF;  --st-work-fg: #7A4605;
+  --st-check: #5A4A8A; --st-check-bg: #E7E2F0; --st-check-fg: #4A3B78;
+  --st-knm: #9C1C1C;   --st-knm-bg: #F3DEDA;   --st-knm-fg: #8A1717;
+  --st-done: #2C6638;  --st-done-bg: #DFEBDD;  --st-done-fg: #24562F;
+
+  --font-ui: 'Golos Text Variable', 'Segoe UI', Arial, sans-serif;
+  --font-display: 'PT Serif', Georgia, 'Times New Roman', serif;
+  --font-num: 'PT Serif', Georgia, serif;
+
+  --chart-1: #1F3A5F;
+  --chart-2: #9C1C1C;
+  --chart-grid: #E4DDCF;
+  --chart-axis: #6A6359;
+  --zone-1: #1F3A5F;
+  --zone-2: #5A4A8A;
+  /* Карта как гравюра: без цвета, тёплый тон бумаги */
+  --map-filter: grayscale(1) sepia(0.32) contrast(0.92) brightness(1.04);
+  --panel-shadow: 0 1px 0 rgba(29, 27, 24, 0.04), 0 10px 30px -18px rgba(60, 45, 20, 0.35);
+}
+
+/* ── Профинструмент: графит в духе Linear ──────────────────────────────────
+   Плотно, тонкие границы почти без теней, индиго — единственный акцент. */
+:root[data-theme="pro"] {
+  --background: #0A0B0D;
+  --foreground: #E6E7EA;
+  --card: #111215;
+  --card-foreground: #E6E7EA;
+  --popover: #17181C;
+  --popover-foreground: #E6E7EA;
+  --primary: #7180E8;
+  --primary-foreground: #FFFFFF;
+  --secondary: rgba(113, 128, 232, 0.14);
+  --secondary-foreground: #AEB6F5;
+  --muted: #16171A;
+  --muted-foreground: #8B8F98;
+  --accent: #1B1C20;
+  --accent-foreground: #E6E7EA;
+  --destructive: #EB5757;
+  --border: rgba(255, 255, 255, 0.07);
+  --input: rgba(255, 255, 255, 0.11);
+  --ring: #7180E8;
+  --radius: 0.5rem;
+
+  --ink: #050506;
+  --danger: #F07A7A;
+  --success: #5CC793;
+  --warning: #F2C94C;
+
+  --st-new: #5E9EFF;   --st-new-bg: rgba(94, 158, 255, 0.14);  --st-new-fg: #9CC3FF;
+  --st-work: #F2C94C;  --st-work-bg: rgba(242, 201, 76, 0.13); --st-work-fg: #F5D77A;
+  --st-check: #B48CF5; --st-check-bg: rgba(180, 140, 245, 0.15); --st-check-fg: #CDB2F9;
+  --st-knm: #EB5757;   --st-knm-bg: rgba(235, 87, 87, 0.15);   --st-knm-fg: #F49494;
+  --st-done: #4CB782;  --st-done-bg: rgba(76, 183, 130, 0.14); --st-done-fg: #86D3AC;
+
+  --font-ui: 'Inter Variable', 'Segoe UI', sans-serif;
+  --font-display: 'Inter Variable', 'Segoe UI', sans-serif;
+  --font-num: 'JetBrains Mono Variable', Consolas, monospace;
+
+  --chart-1: #7180E8;
+  --chart-2: #EB5757;
+  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-axis: #8B8F98;
+  --zone-1: #7180E8;
+  --zone-2: #B48CF5;
+  --map-filter: invert(1) hue-rotate(180deg) grayscale(1) brightness(0.62) contrast(1.15);
+  --panel-shadow: none;
+}
+
+/* ── Общие для тем вещи ────────────────────────────────────────────────── */
+.map-base canvas,
+.map-base img {
+  filter: var(--map-filter);
+}
+
+.font-display { font-family: var(--font-display); }
+.font-num { font-family: var(--font-num); font-variant-numeric: tabular-nums lining-nums; }
+
+/* Стекло диспетчерской: размытие подложки и тонкий блик сверху */
+.glass {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--panel-shadow);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+}
+
+/* Мелкая надпись капителью — подписи разделов в «Диспетчерской» и «Досье» */
+.eyebrow {
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+:root[data-theme="dossier"] .eyebrow {
+  font-family: var(--font-ui);
+  letter-spacing: 0.18em;
+  font-weight: 500;
+}
+
+/* Пульс вокруг тревожных маркеров — только в «Диспетчерской» */
+@keyframes marker-pulse {
+  0%   { transform: scale(1);   opacity: 0.55; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.marker-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: marker-pulse 2.2s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marker-pulse::after { animation: none; }
+}
+
+/* Тонкая полоса прокрутки в тёмных темах */
+:root.dark * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 178, 220, 0.22) transparent;
+}

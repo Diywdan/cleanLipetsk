@@ -40,6 +40,7 @@ export function useIncidentCard() {
     showAiLayer,
     setShowAiLayer,
     formattedTime: timer.formattedTime,
+    msLeft: timer.msLeft,
     isExpired: timer.isExpired,
     slalabel: timer.slaLabel
   };
