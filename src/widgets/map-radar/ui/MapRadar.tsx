@@ -3,11 +3,7 @@ import { useYandexMap } from '../lib/useYandexMap';
 import { useIncidentMarkers } from '../lib/useIncidentMarkers';
 import { STATUS_META, STATUS_ORDER } from '@/entities/incident/lib/presentation';
 
-declare global {
-  interface Window {
-    ymaps3?: any;
-  }
-}
+import './../lib/ymapsTypes';
 
 interface TProps {
   // chrome — карточка с заголовком и легендой (базовая тема);

@@ -1,13 +1,14 @@
 import { useEffect, useState, useRef} from 'react';
 import type { RefObject } from 'react';
 import { loadYmaps3 } from './mapUtils'; // Импортируем твой асинхронный загрузчик
+import type { YMapInstance } from './ymapsTypes';
 import { LIPETSK_POLYGONS } from './lipetskPolygons';
 import { readThemeColors } from '@/shared/theme/themeColors';
 
 interface UseYandexMapResult {
   mapReady: boolean;
   error: string | null;
-  mapRef: RefObject<any | null>;
+  mapRef: RefObject<YMapInstance | null>;
 }
 
 /**
@@ -21,14 +22,12 @@ export function useYandexMap(
   const [error, setError] = useState<string | null>(null);
   
   // Храним сам инстанс карты в Ref, чтобы он не стирался и не вызывал ререндеры
-  const mapRef = useRef<any | null>(null);
+  const mapRef = useRef<YMapInstance | null>(null);
+
+  const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY;
 
   useEffect(() => {
-    const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY;
-    if (!apiKey) {
-      setError('Нет ключа VITE_YANDEX_MAPS_API_KEY в .env');
-      return;
-    }
+    if (!apiKey) return;
 
     // Флаг отмены для защиты от Race Conditions (когда компонент размонтировался до того, как ответил сервер)
     let cancelled = false;
@@ -121,7 +120,7 @@ export function useYandexMap(
         mapRef.current = null;
       }
     };
-  }, [mapContainerRef]); // Запускается строго один раз при привязке контейнера
+  }, [mapContainerRef, apiKey]); // Запускается строго один раз при привязке контейнера
 
-  return { mapReady, error, mapRef };
+  return { mapReady, error: apiKey ? error : 'Нет ключа VITE_YANDEX_MAPS_API_KEY в .env', mapRef };
 }

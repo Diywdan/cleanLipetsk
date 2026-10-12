@@ -40,7 +40,7 @@ export function timeLeft(deadlineIso: string, now: number): { text: string; over
   const abs = Math.abs(ms);
   const h = Math.floor(abs / 3_600_000);
   const m = Math.floor((abs % 3_600_000) / 60_000);
-  const span = h >= 24 ? `${Math.floor(h / 24)} сут ${h % 24} ч` : h > 0 ? `${h} ч ${m} мин` : `${m} мин`;
+  const span = abs < 60_000 ? '< 1 мин' : h >= 24 ? `${Math.floor(h / 24)} сут ${h % 24} ч` : h > 0 ? `${h} ч ${m} мин` : `${m} мин`;
   return ms >= 0 ? { text: span, overdue: false, ms } : { text: `просрочено на ${span}`, overdue: true, ms };
 }
 

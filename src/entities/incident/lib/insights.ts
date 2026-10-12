@@ -37,6 +37,18 @@ export function failingExecutors(incidents: IIncident[], now: number) {
     .sort((a, b) => b.overdue + b.knm - (a.overdue + a.knm) || b.open - a.open);
 }
 
+// В работе, срок ещё не вышел, но выйдет в ближайшие hours часов — ближайшие сверху
+export function dueSoon(incidents: IIncident[], now: number, hours = 24, limit = 5) {
+  return incidents
+    .filter((i) => {
+      if (i.status !== 'IN_PROGRESS' || !i.timeline.deadlineAt) return false;
+      const left = new Date(i.timeline.deadlineAt).getTime() - now;
+      return left > 0 && left <= hours * HOUR;
+    })
+    .sort((a, b) => new Date(a.timeline.deadlineAt!).getTime() - new Date(b.timeline.deadlineAt!).getTime())
+    .slice(0, limit);
+}
+
 // Адреса, где нарушения повторяются (больше двух раз за месяц)
 export function repeatAddresses(incidents: IIncident[], limit = 5) {
   return incidents

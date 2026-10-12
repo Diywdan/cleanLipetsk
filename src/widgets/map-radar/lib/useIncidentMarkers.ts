@@ -3,9 +3,10 @@ import { useIncidentStore } from '@/entities/incident/model/incidentStore';
 import { useFilteredIncidents } from '@/entities/incident/model/filterStore';
 import { useStandStore } from '@/shared/theme/standStore';
 import { createMarkerElement } from './mapUtils';
+import type { YMapInstance } from './ymapsTypes';
 
-export function useIncidentMarkers(mapReady: boolean, mapRef: React.RefObject<any | null>) {
-  const markerChildrenRef = useRef<any[]>([]);
+export function useIncidentMarkers(mapReady: boolean, mapRef: React.RefObject<YMapInstance | null>) {
+  const markerChildrenRef = useRef<object[]>([]);
 
   // На карте — те же обращения, что в реестре после фильтров
   const incidents = useFilteredIncidents();

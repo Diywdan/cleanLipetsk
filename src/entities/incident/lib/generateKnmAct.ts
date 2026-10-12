@@ -1,4 +1,3 @@
-import { jsPDF } from 'jspdf';
 import type { IIncident } from '../types';
 import { getPrimaryResponsible, getRecidivismCount } from './responsibles';
 
@@ -28,6 +27,8 @@ const fetchLocalFontAsBase64 = async (url: string): Promise<string> => {
 };
 
 export const generateKnmAct = async (incident: IIncident) => {
+  // jsPDF тяжёлый (~400 КБ с html2canvas) — тянем его только при выгрузке акта
+  const { jsPDF } = await import('jspdf');
   const currentDate = new Date().toLocaleDateString('ru-RU');
   const primary = getPrimaryResponsible(incident);
   const orgName = primary?.organization.name ?? 'не определена';

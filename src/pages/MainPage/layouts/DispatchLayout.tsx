@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Search, X, Radio, AlertTriangle, Repeat2 } from 'lucide-react';
+import React, { Suspense, lazy, useMemo } from 'react';
+import { Search, X, Radio, AlertTriangle, Repeat2, Hourglass } from 'lucide-react';
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
 import { useFilterStore, useFilteredIncidents } from '@/entities/incident/model/filterStore';
 import { useAuthStore } from '@/entities/user/model/authStore';
@@ -7,13 +7,15 @@ import type { IIncident, IncidentStatus } from '@/entities/incident/types';
 import { STATUS_META, STATUS_ORDER, typoQuotes } from '@/entities/incident/lib/presentation';
 import { getPrimaryOrganizationName, getRecidivismCount } from '@/entities/incident/lib/responsibles';
 import { summarizeIncidents } from '@/entities/incident/lib/summary';
-import { byDay, countByStatus, createdWithin, failingExecutors, repeatAddresses } from '@/entities/incident/lib/insights';
+import { byDay, countByStatus, createdWithin, dueSoon, failingExecutors, repeatAddresses } from '@/entities/incident/lib/insights';
 import { StatusIcon } from '@/entities/incident/ui/StatusIcon';
 import { DispatchCard } from '@/entities/incident/ui/card/DispatchCard';
 import { useNow, timeAgo, timeLeft } from '@/shared/lib/time';
 import { MapRadar } from '@/widgets/map-radar';
-import { DashboardPage } from '../../DashboardPage/DashboardPage';
 import { ROLE_TITLE, initials, type AppTab, APP_TABS, useUrlState } from './shared';
+
+// Аналитика с графиками (recharts) грузится, только когда её открыли
+const DashboardPage = lazy(() => import('../../DashboardPage/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Диспетчерская» — ситуационный центр. Карта города на весь экран, поверх неё
@@ -298,6 +300,7 @@ const AttentionPanel: React.FC = () => {
   const selectIncident = useIncidentStore((s) => s.selectIncident);
   const failing = failingExecutors(all, now).slice(0, 5);
   const repeats = repeatAddresses(all, 5);
+  const soon = dueSoon(all, now, 24, 5);
   const max = Math.max(1, ...failing.map((f) => f.overdue + f.knm));
 
   return (
@@ -335,6 +338,37 @@ const AttentionPanel: React.FC = () => {
           <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--st-work)]" />срок истёк</span>
           <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--st-knm)]" />на КНМ</span>
         </div>
+      </section>
+
+      <section className="mt-6">
+        <h3 className="m-0 flex items-center gap-2 text-[13px] font-medium text-foreground">
+          <Hourglass className="size-3.5 text-muted-foreground" /> Срок выйдет за сутки
+        </h3>
+        {soon.length === 0 ? (
+          <p className="mt-3 text-[13px] text-muted-foreground">Ближайшие сутки спокойно</p>
+        ) : (
+          <ul className="m-0 mt-2 list-none space-y-0.5 p-0">
+            {soon.map((i) => {
+              const left = timeLeft(i.timeline.deadlineAt!, now);
+              const hot = left.ms < 4 * 3_600_000;
+              return (
+                <li key={i.id}>
+                  <button
+                    type="button"
+                    onClick={() => selectIncident(i.id)}
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-[var(--hover)]"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] text-foreground">{typoQuotes(i.location.address)}</span>
+                      <span className="block truncate text-[11.5px] text-muted-foreground">{typoQuotes(getPrimaryOrganizationName(i))}</span>
+                    </span>
+                    <span className={`font-num shrink-0 text-[12px] ${hot ? 'text-[var(--st-work)]' : 'text-muted-foreground'}`}>{left.text}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       <section className="mt-6">
@@ -390,19 +424,22 @@ export const DispatchLayout: React.FC = () => {
       {tab === 'analytics' ? (
         <div className="relative z-10 h-full overflow-y-auto lg:pt-[72px]">
           <div className="mx-auto max-w-[1600px]">
-            <DashboardPage />
+            <Suspense fallback={<div className="eyebrow p-6">Загружаю аналитику…</div>}>
+              <DashboardPage />
+            </Suspense>
           </div>
         </div>
       ) : (
         <>
-          <div className="relative mx-3 h-[52vh] overflow-hidden rounded-2xl ring-1 ring-border lg:absolute lg:inset-0 lg:mx-0 lg:h-auto lg:rounded-none lg:ring-0">
+          <div className="relative isolate mx-3 h-[52vh] overflow-hidden rounded-2xl ring-1 ring-border lg:absolute lg:inset-0 lg:mx-0 lg:h-auto lg:rounded-none lg:ring-0">
             <MapRadar chrome={false} className="h-full w-full" />
             {/* Виньетка: края карты уходят в фон, панели читаются */}
             <div className="pointer-events-none absolute inset-0 shadow-[var(--vignette)]" />
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(var(--grid-line)_1px,transparent_1px),linear-gradient(90deg,var(--grid-line)_1px,transparent_1px)] bg-[size:48px_48px]" />
           </div>
 
-          <div className="relative z-10 flex flex-col gap-3 p-3 lg:pointer-events-none lg:absolute lg:inset-x-4 lg:bottom-12 lg:top-[84px] lg:flex-row lg:items-stretch lg:justify-between lg:p-0">
+          {/* На телефоне открытое дело — полноэкранный слой: поднимаем весь блок над шапкой и кнопками карты */}
+          <div className={`relative flex flex-col gap-3 p-3 lg:pointer-events-none ${selected ? 'z-50 lg:z-10' : 'z-10'} lg:absolute lg:inset-x-4 lg:bottom-14 lg:top-[84px] lg:flex-row lg:items-stretch lg:justify-between lg:p-0`}>
             <div className="flex min-h-0 lg:w-[340px] xl:w-[372px]">
               <LeftPanel />
             </div>

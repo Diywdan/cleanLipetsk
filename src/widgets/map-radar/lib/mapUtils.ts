@@ -1,11 +1,14 @@
 import { STATUS_META } from "@/entities/incident/lib/presentation";
 import type { IncidentStatus } from "@/entities/incident/types";
 
-let ymapsLoadPromise: Promise<any> | null = null;
+import type { Ymaps3 } from "./ymapsTypes";
 
-export function loadYmaps3(apiKey: string): Promise<any> {
-  if (window.ymaps3) {
-    return window.ymaps3.ready.then(() => window.ymaps3);
+let ymapsLoadPromise: Promise<Ymaps3> | null = null;
+
+export function loadYmaps3(apiKey: string): Promise<Ymaps3> {
+  const loaded = window.ymaps3;
+  if (loaded) {
+    return loaded.ready.then(() => loaded);
   }
 
   if (ymapsLoadPromise) return ymapsLoadPromise;
