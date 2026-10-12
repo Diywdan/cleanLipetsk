@@ -10,7 +10,7 @@ export function useIncidentMarkers(mapReady: boolean, mapRef: React.RefObject<an
   // На карте — те же обращения, что в реестре после фильтров
   const incidents = useFilteredIncidents();
   const { selectedIncident, selectIncident } = useIncidentStore();
-  const theme = useStandStore((s) => s.theme);
+  const mode = useStandStore((s) => s.mode);
 
   useEffect(() => {
     // Если карта еще не проинициализирована хуком useYandexMap — ничего не делаем
@@ -36,7 +36,6 @@ export function useIncidentMarkers(mapReady: boolean, mapRef: React.RefObject<an
         incident.status,
         isSelected,
         () => selectIncident(incident.id),
-        theme,
       );
 
       const marker = new YMapMarker({
@@ -48,7 +47,7 @@ export function useIncidentMarkers(mapReady: boolean, mapRef: React.RefObject<an
       currentMap.addChild(marker);
       markerChildrenRef.current.push(marker);
     });
-  }, [mapReady, incidents, selectedIncident, selectIncident, mapRef, theme]);
+  }, [mapReady, incidents, selectedIncident, selectIncident, mapRef, mode]);
 
   // Перелёт к выбранному обращению
   const selectedId = selectedIncident?.id;

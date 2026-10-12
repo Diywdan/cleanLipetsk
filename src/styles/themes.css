@@ -1,74 +1,17 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   Токены тем демонстрационного стенда.
+   Токены «Диспетчерской» — ситуационного центра контроля площадок.
+   Два тона: тёмный (по умолчанию) и светлый — атрибут data-mode на <html>.
    Компоненты красятся только через эти переменные (bg-card, text-danger,
-   var(--st-new)…), поэтому тема меняется одним атрибутом data-theme на <html>.
-   Селектор :root[data-theme] сильнее, чем .dark из shadcn, — порядок не важен.
+   var(--st-new)…). Селектор :root[data-mode] сильнее, чем .dark из shadcn.
 
    Статусы: --st-x — точка/маркер/график, --st-x-bg — подложка тега,
    --st-x-fg — текст тега (контраст к своей подложке ≥ 4.5).
    ───────────────────────────────────────────────────────────────────────── */
 
-/* ── Базовая: палитра Госуслуг ─────────────────────────────────────────── */
+/* ── Тёмный тон: почти чёрный синий, стеклянные панели над картой, данные
+   светятся. Бирюза — «живое» и новое, малиновый — тревога. ─────────────── */
 :root,
-:root[data-theme="gos"] {
-  --background: #EEF3F8;
-  --foreground: #0B1F33;
-  --card: #FFFFFF;
-  --card-foreground: #0B1F33;
-  --popover: #FFFFFF;
-  --popover-foreground: #0B1F33;
-  --primary: #0D4CD3;
-  --primary-foreground: #FFFFFF;
-  --secondary: #E8EFFC;
-  --secondary-foreground: #0D4CD3;
-  --muted: #F5F7FA;
-  --muted-foreground: #5C6B7A;
-  --accent: #F5F7FA;
-  --accent-foreground: #0B1F33;
-  --destructive: #BE1B33;
-  --border: #DCE3EB;
-  --input: #C9D3DE;
-  --ring: #0D4CD3;
-  --radius: 0.5rem;
-
-  --ink: #0B1F33;
-  --danger: #BE1B33;
-  --success: #0A6B34;
-  --warning: #8A5300;
-
-  --st-new: #0D4CD3;   --st-new-bg: #E8EFFC;   --st-new-fg: #0D4CD3;
-  --st-work: #E89B0C;  --st-work-bg: #FFF3DC;  --st-work-fg: #8A5300;
-  --st-check: #7B61D1; --st-check-bg: #EFEBFA; --st-check-fg: #5B3FB0;
-  --st-knm: #EE3F58;   --st-knm-bg: #FCEBED;   --st-knm-fg: #BE1B33;
-  --st-done: #12A150;  --st-done-bg: #E5F4EB;  --st-done-fg: #0A6B34;
-
-  --font-ui: 'Golos Text Variable', 'Segoe UI', Arial, sans-serif;
-  --font-display: var(--font-ui);
-  --font-num: var(--font-ui);
-
-  --chart-1: #0D4CD3;
-  --chart-2: #EE3F58;
-  --chart-grid: #EEF3F8;
-  --chart-axis: #5C6B7A;
-  --zone-1: #0D4CD3;
-  --zone-2: #5B3FB0;
-  --map-filter: saturate(0.25) brightness(1.03);
-  --panel-shadow: none;
-
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #0B1F33;
-  --sidebar-primary: #0D4CD3;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F5F7FA;
-  --sidebar-accent-foreground: #0B1F33;
-  --sidebar-border: #DCE3EB;
-  --sidebar-ring: #0D4CD3;
-}
-
-/* ── Диспетчерская: ситуационный центр ─────────────────────────────────────
-   Почти чёрный синий, стеклянные панели над картой, данные светятся.
-   Бирюза — «живое» и новое, малиновый — тревога. */
-:root[data-theme="dispatch"] {
+:root[data-mode="dark"] {
   --background: #050A14;
   --foreground: #E4ECF7;
   --card: rgba(10, 18, 34, 0.78);
@@ -101,7 +44,6 @@
   --st-done: #34D399;  --st-done-bg: rgba(52, 211, 153, 0.14); --st-done-fg: #7EE6BF;
 
   --font-ui: 'Golos Text Variable', 'Segoe UI', Arial, sans-serif;
-  --font-display: 'Golos Text Variable', 'Segoe UI', sans-serif;
   --font-num: 'JetBrains Mono Variable', Consolas, monospace;
 
   --chart-1: #38D3F2;
@@ -113,120 +55,7 @@
   /* Светлая схема Яндекса → тёмная ночная: инверсия, разворот оттенка, холодный тон */
   --map-filter: invert(1) hue-rotate(180deg) grayscale(0.55) brightness(0.78) contrast(1.12) sepia(0.18) hue-rotate(175deg) saturate(1.6);
   --panel-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
 
-/* ── Досье: сводка в газетной манере ───────────────────────────────────────
-   Бумага и чернила, PT Serif в заголовках и цифрах, тонкие линейки,
-   красный — как штамп, тёмно-синий — как чернила ручки. */
-:root[data-theme="dossier"] {
-  --background: #EDE8DE;
-  --foreground: #1D1B18;
-  --card: #FBF8F1;
-  --card-foreground: #1D1B18;
-  --popover: #FBF8F1;
-  --popover-foreground: #1D1B18;
-  --primary: #1F3A5F;
-  --primary-foreground: #FBF8F1;
-  --secondary: #E4DDCF;
-  --secondary-foreground: #1F3A5F;
-  --muted: #F3EEE4;
-  --muted-foreground: #6A6359;
-  --accent: #F3EEE4;
-  --accent-foreground: #1D1B18;
-  --destructive: #9C1C1C;
-  --border: #D3C9B7;
-  --input: #B7AB96;
-  --ring: #1F3A5F;
-  --radius: 0.125rem;
-
-  --ink: #1D1B18;
-  --danger: #9C1C1C;
-  --success: #2C6638;
-  --warning: #8A4F06;
-
-  --st-new: #1F3A5F;   --st-new-bg: #E1E6EE;   --st-new-fg: #1F3A5F;
-  --st-work: #B36B0B;  --st-work-bg: #F4E6CF;  --st-work-fg: #7A4605;
-  --st-check: #5A4A8A; --st-check-bg: #E7E2F0; --st-check-fg: #4A3B78;
-  --st-knm: #9C1C1C;   --st-knm-bg: #F3DEDA;   --st-knm-fg: #8A1717;
-  --st-done: #2C6638;  --st-done-bg: #DFEBDD;  --st-done-fg: #24562F;
-
-  --font-ui: 'Golos Text Variable', 'Segoe UI', Arial, sans-serif;
-  --font-display: 'PT Serif', Georgia, 'Times New Roman', serif;
-  --font-num: 'PT Serif', Georgia, serif;
-
-  --chart-1: #1F3A5F;
-  --chart-2: #9C1C1C;
-  --chart-grid: #E4DDCF;
-  --chart-axis: #6A6359;
-  --zone-1: #1F3A5F;
-  --zone-2: #5A4A8A;
-  /* Карта как гравюра: без цвета, тёплый тон бумаги */
-  --map-filter: grayscale(1) sepia(0.32) contrast(0.92) brightness(1.04);
-  --panel-shadow: 0 1px 0 rgba(29, 27, 24, 0.04), 0 10px 30px -18px rgba(60, 45, 20, 0.35);
-}
-
-/* ── Профинструмент: графит в духе Linear ──────────────────────────────────
-   Плотно, тонкие границы почти без теней, индиго — единственный акцент. */
-:root[data-theme="pro"] {
-  --background: #0A0B0D;
-  --foreground: #E6E7EA;
-  --card: #111215;
-  --card-foreground: #E6E7EA;
-  --popover: #17181C;
-  --popover-foreground: #E6E7EA;
-  --primary: #7180E8;
-  --primary-foreground: #FFFFFF;
-  --secondary: rgba(113, 128, 232, 0.14);
-  --secondary-foreground: #AEB6F5;
-  --muted: #16171A;
-  --muted-foreground: #8B8F98;
-  --accent: #1B1C20;
-  --accent-foreground: #E6E7EA;
-  --destructive: #EB5757;
-  --border: rgba(255, 255, 255, 0.07);
-  --input: rgba(255, 255, 255, 0.11);
-  --ring: #7180E8;
-  --radius: 0.5rem;
-
-  --ink: #050506;
-  --danger: #F07A7A;
-  --success: #5CC793;
-  --warning: #F2C94C;
-
-  --st-new: #5E9EFF;   --st-new-bg: rgba(94, 158, 255, 0.14);  --st-new-fg: #9CC3FF;
-  --st-work: #F2C94C;  --st-work-bg: rgba(242, 201, 76, 0.13); --st-work-fg: #F5D77A;
-  --st-check: #B48CF5; --st-check-bg: rgba(180, 140, 245, 0.15); --st-check-fg: #CDB2F9;
-  --st-knm: #EB5757;   --st-knm-bg: rgba(235, 87, 87, 0.15);   --st-knm-fg: #F49494;
-  --st-done: #4CB782;  --st-done-bg: rgba(76, 183, 130, 0.14); --st-done-fg: #86D3AC;
-
-  --font-ui: 'Inter Variable', 'Segoe UI', sans-serif;
-  --font-display: 'Inter Variable', 'Segoe UI', sans-serif;
-  --font-num: 'JetBrains Mono Variable', Consolas, monospace;
-
-  --chart-1: #7180E8;
-  --chart-2: #EB5757;
-  --chart-grid: rgba(255, 255, 255, 0.06);
-  --chart-axis: #8B8F98;
-  --zone-1: #7180E8;
-  --zone-2: #B48CF5;
-  --map-filter: invert(1) hue-rotate(180deg) grayscale(1) brightness(0.62) contrast(1.15);
-  --panel-shadow: none;
-}
-
-/* ── Служебные токены поверхностей ─────────────────────────────────────────
-   Вдавленные блоки, наведение, активный фильтр, подсветка сцены и сетка над
-   картой. По умолчанию — из основной палитры; тёмные темы задают свои. */
-:root {
-  --inset: var(--muted);
-  --hover: var(--muted);
-  --chip-on: var(--secondary);
-  --chip-ring: var(--border);
-  --group-bg: var(--muted);
-  --stage-glow: none;
-  --vignette: none;
-  --grid-line: transparent;
-}
-:root[data-theme="dispatch"] {
   --inset: rgba(0, 0, 0, 0.25);
   --hover: rgba(255, 255, 255, 0.04);
   --chip-on: rgba(255, 255, 255, 0.10);
@@ -235,21 +64,22 @@
     radial-gradient(900px 500px at 0% 110%, rgba(167, 139, 250, 0.08), transparent 60%);
   --vignette: inset 0 0 160px 40px rgba(5, 10, 20, 0.85);
   --grid-line: rgba(56, 211, 242, 0.035);
-}
-:root[data-theme="pro"] {
-  --inset: rgba(0, 0, 0, 0.25);
-  --hover: rgba(255, 255, 255, 0.025);
-  --chip-on: rgba(255, 255, 255, 0.08);
-  --chip-ring: rgba(255, 255, 255, 0.16);
-  --sidebar: #0D0E10;
-  --group-bg: #131417;
+
+  --sidebar: #0A1222;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 }
 
-/* ── Диспетчерская, светлая: дневной ситуационный центр ───────────────────
-   Та же раскладка, но для светлого зала и проектора: холодный светло-серый фон,
+/* ── Светлый тон: дневной ситуационный центр ──────────────────────────────
+   Та же раскладка для светлого зала и проектора: холодный светло-серый фон,
    матовое белое стекло, бирюза темнее — чтобы читалась на белом. Свечение
    заменено плотным цветом. */
-:root[data-theme="dispatch"][data-mode="light"] {
+:root[data-mode="light"] {
   --background: #E4EAF2;
   --foreground: #0E1B2E;
   --card: rgba(255, 255, 255, 0.80);
@@ -297,69 +127,19 @@
     radial-gradient(900px 500px at 0% 110%, rgba(117, 83, 214, 0.07), transparent 60%);
   --vignette: inset 0 0 140px 24px rgba(228, 234, 242, 0.80);
   --grid-line: rgba(10, 84, 140, 0.05);
+  --sidebar: #F4F7FB;
 }
 /* На светлом фоне свечение цифр мутнит текст — убираем его */
-:root[data-theme="dispatch"][data-mode="light"] [style*="text-shadow"] {
+:root[data-mode="light"] [style*="text-shadow"] {
   text-shadow: none !important;
 }
 
-/* ── Профинструмент, светлый: Linear днём ─────────────────────────────────
-   Белая рабочая область, серое боковое меню, тонкие линии, тот же индиго. */
-:root[data-theme="pro"][data-mode="light"] {
-  --background: #FCFCFD;
-  --foreground: #1C1D21;
-  --card: #FFFFFF;
-  --card-foreground: #1C1D21;
-  --popover: #FFFFFF;
-  --popover-foreground: #1C1D21;
-  --primary: #5E6AD2;
-  --primary-foreground: #FFFFFF;
-  --secondary: rgba(94, 106, 210, 0.10);
-  --secondary-foreground: #4652B8;
-  --muted: #F4F5F7;
-  --muted-foreground: #6B6F78;
-  --accent: #EFF0F3;
-  --accent-foreground: #1C1D21;
-  --destructive: #D93F44;
-  --border: #E6E7EA;
-  --input: #DADBDF;
-  --ring: #5E6AD2;
-
-  --ink: #1C1D21;
-  --danger: #D23B40;
-  --success: #22835A;
-  --warning: #A06500;
-
-  --st-new: #2E6FD8;   --st-new-bg: rgba(46, 111, 216, 0.10);  --st-new-fg: #2459B3;
-  --st-work: #D49A00;  --st-work-bg: rgba(212, 154, 0, 0.13);  --st-work-fg: #855F00;
-  --st-check: #8B5CF6; --st-check-bg: rgba(139, 92, 246, 0.10); --st-check-fg: #6D3FD6;
-  --st-knm: #E5484D;   --st-knm-bg: rgba(229, 72, 77, 0.10);   --st-knm-fg: #C2353A;
-  --st-done: #30A46C;  --st-done-bg: rgba(48, 164, 108, 0.11); --st-done-fg: #227A50;
-
-  --chart-1: #5E6AD2;
-  --chart-2: #E5484D;
-  --chart-grid: #EEEFF2;
-  --chart-axis: #6B6F78;
-  --zone-1: #5E6AD2;
-  --zone-2: #8B5CF6;
-  --map-filter: grayscale(1) brightness(1.06) contrast(0.92);
-  --panel-shadow: none;
-
-  --inset: #F7F8F9;
-  --hover: #F6F7F9;
-  --chip-on: #FFFFFF;
-  --chip-ring: #DADBDF;
-  --sidebar: #F7F8F9;
-  --group-bg: #F7F8F9;
-}
-
-/* ── Общие для тем вещи ────────────────────────────────────────────────── */
+/* ── Общие вещи ─────────────────────────────────────────────────────────── */
 .map-base canvas,
 .map-base img {
   filter: var(--map-filter);
 }
 
-.font-display { font-family: var(--font-display); }
 .font-num { font-family: var(--font-num); font-variant-numeric: tabular-nums lining-nums; }
 
 /* Стекло диспетчерской: размытие подложки и тонкий блик сверху */
@@ -371,7 +151,7 @@
   -webkit-backdrop-filter: blur(18px) saturate(1.3);
 }
 
-/* Мелкая надпись капителью — подписи разделов в «Диспетчерской» и «Досье» */
+/* Мелкая надпись капителью — подписи разделов */
 .eyebrow {
   font-size: 11px;
   line-height: 1.2;
@@ -380,13 +160,8 @@
   font-weight: 600;
   color: var(--muted-foreground);
 }
-:root[data-theme="dossier"] .eyebrow {
-  font-family: var(--font-ui);
-  letter-spacing: 0.18em;
-  font-weight: 500;
-}
 
-/* Пульс вокруг тревожных маркеров — только в «Диспетчерской» */
+/* Пульс вокруг новых и переданных на КНМ маркеров */
 @keyframes marker-pulse {
   0%   { transform: scale(1);   opacity: 0.55; }
   100% { transform: scale(2.6); opacity: 0; }

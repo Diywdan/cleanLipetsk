@@ -62,11 +62,11 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
 
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 pb-5">
         {m.sla.active && (
-          <SlaMeter incident={inc} variant="dispatch" formattedTime={m.sla.formattedTime} msLeft={m.sla.msLeft} isExpired={m.sla.isExpired} label={m.sla.label} />
+          <SlaMeter incident={inc} formattedTime={m.sla.formattedTime} msLeft={m.sla.msLeft} isExpired={m.sla.isExpired} label={m.sla.label} />
         )}
 
         <Section title="Фотофиксация" aside={!inc.media.photoAfterUrl && <AiToggle checked={m.showAi} onChange={m.setShowAi} />}>
-          <PhotoEvidence incident={inc} variant="dispatch" showAi={m.showAi} />
+          <PhotoEvidence incident={inc} showAi={m.showAi} />
         </Section>
 
         <div className="grid grid-cols-2 gap-2">
@@ -84,16 +84,16 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
         </div>
 
         <Section title="Ответственные">
-          <ResponsiblesList incident={inc} variant="dispatch" />
+          <ResponsiblesList incident={inc} />
         </Section>
 
         <Section title="Хроника">
-          <HistoryList history={inc.timeline.history} variant="dispatch" />
+          <HistoryList history={inc.timeline.history} />
         </Section>
       </div>
 
       <footer className="shrink-0 border-t border-border bg-[var(--inset)] px-5 py-4">
-        <CardActions incident={inc} role={role} variant="dispatch" h={m.handlers} />
+        <CardActions incident={inc} role={role} h={m.handlers} />
       </footer>
     </article>
   );

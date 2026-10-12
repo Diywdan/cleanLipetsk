@@ -22,9 +22,8 @@ export function readThemeColors(): ThemeColors {
 }
 
 export function useThemeColors(): ThemeColors {
-  const theme = useStandStore((s) => s.theme);
   const mode = useStandStore((s) => s.mode);
-  // theme и mode нужны как ключ пересчёта: значения читаются из DOM
+  // mode нужен как ключ пересчёта: значения читаются из DOM
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => readThemeColors(), [theme, mode]);
+  return useMemo(() => readThemeColors(), [mode]);
 }

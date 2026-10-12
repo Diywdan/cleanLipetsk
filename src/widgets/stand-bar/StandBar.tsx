@@ -1,10 +1,9 @@
 import React from 'react';
 import { useAuthStore } from '@/entities/user/model/authStore';
 import type { UserRole } from '@/entities/user/types';
-import { MODE_THEMES, THEMES, useStandStore, type DatasetId, type ModeId } from '@/shared/theme/standStore';
+import { useStandStore, type DatasetId, type ModeId } from '@/shared/theme/standStore';
 
-// Полоса демонстрационного стенда — одна на все темы.
-// Переключает направление дизайна, набор данных и роль без входа в систему.
+// Полоса демонстрационного стенда: тон, набор данных и роль без входа в систему.
 const ROLES: { role: UserRole; title: string }[] = [
   { role: 'INSPECTOR', title: 'Инспектор' },
   { role: 'UK', title: 'Мастер УК' },
@@ -61,7 +60,7 @@ const Segmented: React.FC<{
 );
 
 export const StandBar: React.FC = () => {
-  const { theme, setTheme, dataset, setDataset, mode, setMode } = useStandStore();
+  const { dataset, setDataset, mode, setMode } = useStandStore();
   const { currentUser, switchDevRole } = useAuthStore();
 
   const setRole = (role: string) => {
@@ -81,11 +80,7 @@ export const StandBar: React.FC = () => {
         <span className="hidden min-[420px]:inline sm:hidden">Стенд</span>
       </span>
       <div className="ml-auto flex min-w-0 items-center gap-x-2 md:flex-wrap md:gap-x-5 md:gap-y-1.5">
-        <Segmented label="Дизайн" items={THEMES} value={theme} onChange={(id) => setTheme(id as typeof theme)} />
-        {/* Тон есть только у тёмных по замыслу тем */}
-        {MODE_THEMES.includes(theme) && (
-          <Segmented label="Тон" items={MODES} value={mode} onChange={(id) => setMode(id as ModeId)} />
-        )}
+        <Segmented label="Тон" items={MODES} value={mode} onChange={(id) => setMode(id as ModeId)} />
         <div className="hidden sm:block">
           <Segmented label="Данные" items={DATASETS} value={dataset} onChange={(id) => setDataset(id as DatasetId)} />
         </div>

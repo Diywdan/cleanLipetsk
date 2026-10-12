@@ -1,57 +1,36 @@
 import { create } from 'zustand';
 
-// Демонстрационный стенд: три направления дизайна и базовая гос-тема.
-// Тема живёт в атрибуте data-theme на <html> — от него зависят токены в themes.css.
-export type ThemeId = 'dispatch' | 'dossier' | 'pro' | 'gos';
+// Демонстрационный стенд. Дизайн один — «Диспетчерская», у него два тона:
+// тёмный (ситуационный центр) и светлый (дневной зал, проектор).
+// Тон живёт в атрибуте data-mode на <html> — от него зависят токены в themes.css.
 export type DatasetId = 'demo' | 'mock';
 export type ModeId = 'dark' | 'light';
 
-export const THEMES: { id: ThemeId; title: string; hint: string }[] = [
-  { id: 'dispatch', title: 'Диспетчерская', hint: 'Ситуационный центр: карта на весь экран, тёмная тема' },
-  { id: 'dossier', title: 'Досье', hint: 'Сводка в газетной манере: бумага, засечки, служебная записка' },
-  { id: 'pro', title: 'Профинструмент', hint: 'Рабочее место инспектора: плотный список, горячие клавиши' },
-  { id: 'gos', title: 'Базовая', hint: 'Палитра Госуслуг, первый вариант' },
-];
-
-// Тёмные по замыслу темы; у них есть светлый вариант (mode), остальные всегда светлые
-export const MODE_THEMES: ThemeId[] = ['dispatch', 'pro'];
-const STORAGE_KEY = 'chisto.stand.v1';
+const STORAGE_KEY = 'chisto.stand.v2';
 
 interface StandState {
-  theme: ThemeId;
   dataset: DatasetId;
   mode: ModeId;
   setMode: (mode: ModeId) => void;
-  setTheme: (theme: ThemeId) => void;
   setDataset: (dataset: DatasetId) => void;
 }
 
-function isTheme(value: unknown): value is ThemeId {
-  return THEMES.some((t) => t.id === value);
-}
+type Saved = { dataset: DatasetId; mode: ModeId };
 
-// Тему можно задать ссылкой: ?t=dossier — удобно отправлять коллегам
-type Saved = { theme: ThemeId; dataset: DatasetId; mode: ModeId };
-
+// Тон можно задать ссылкой: ?m=light — удобно отправлять коллегам
 function readInitial(): Saved {
-  let theme: ThemeId = 'dispatch';
   let dataset: DatasetId = 'demo';
   let mode: ModeId = 'dark';
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    if (isTheme(saved.theme)) theme = saved.theme;
     if (saved.dataset === 'mock' || saved.dataset === 'demo') dataset = saved.dataset;
     if (saved.mode === 'light' || saved.mode === 'dark') mode = saved.mode;
   } catch {
     /* хранилище недоступно — берём значения по умолчанию */
   }
-  const params = new URLSearchParams(window.location.search);
-  const fromUrl = params.get('t');
-  if (isTheme(fromUrl)) theme = fromUrl;
-  // ?m=light — светлый вариант «Диспетчерской» и «Профинструмента»
-  const modeUrl = params.get('m');
-  if (modeUrl === 'light' || modeUrl === 'dark') mode = modeUrl;
-  return { theme, dataset, mode };
+  const fromUrl = new URLSearchParams(window.location.search).get('m');
+  if (fromUrl === 'light' || fromUrl === 'dark') mode = fromUrl;
+  return { dataset, mode };
 }
 
 function persist(state: Saved) {
@@ -62,49 +41,33 @@ function persist(state: Saved) {
   }
 }
 
-export function isDark(theme: ThemeId, mode: ModeId): boolean {
-  return MODE_THEMES.includes(theme) && mode === 'dark';
-}
-
-export function applyTheme(theme: ThemeId, mode: ModeId) {
+export function applyMode(mode: ModeId) {
   const root = document.documentElement;
-  const dark = isDark(theme, mode);
-  root.dataset.theme = theme;
-  root.dataset.mode = dark ? 'dark' : 'light';
-  root.classList.toggle('dark', dark);
-  root.style.colorScheme = dark ? 'dark' : 'light';
+  root.dataset.mode = mode;
+  root.classList.toggle('dark', mode === 'dark');
+  root.style.colorScheme = mode;
 }
 
-function writeUrl(theme: ThemeId, mode: ModeId) {
+function writeUrl(mode: ModeId) {
   const url = new URL(window.location.href);
-  url.searchParams.set('t', theme);
-  if (MODE_THEMES.includes(theme) && mode === 'light') url.searchParams.set('m', 'light');
+  if (mode === 'light') url.searchParams.set('m', 'light');
   else url.searchParams.delete('m');
   window.history.replaceState(null, '', url);
 }
 
 const initial = readInitial();
-applyTheme(initial.theme, initial.mode);
+applyMode(initial.mode);
 
 export const useStandStore = create<StandState>((set, get) => ({
   ...initial,
-  setTheme: (theme) => {
-    const { mode, dataset } = get();
-    applyTheme(theme, mode);
-    writeUrl(theme, mode);
-    set({ theme });
-    persist({ theme, dataset, mode });
-  },
   setMode: (mode) => {
-    const { theme, dataset } = get();
-    applyTheme(theme, mode);
-    writeUrl(theme, mode);
+    applyMode(mode);
+    writeUrl(mode);
     set({ mode });
-    persist({ theme, dataset, mode });
+    persist({ dataset: get().dataset, mode });
   },
   setDataset: (dataset) => {
-    const { theme, mode } = get();
     set({ dataset });
-    persist({ theme, dataset, mode });
+    persist({ dataset, mode: get().mode });
   },
 }));
