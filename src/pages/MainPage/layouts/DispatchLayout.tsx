@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useMemo } from 'react';
-import { Search, X, Radio, AlertTriangle, Repeat2, Hourglass } from 'lucide-react';
+import { Search, X, Radio, AlertTriangle, Repeat2, Hourglass, Download } from 'lucide-react';
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
 import { useFilterStore, useFilteredIncidents } from '@/entities/incident/model/filterStore';
 import { useAuthStore } from '@/entities/user/model/authStore';
@@ -15,6 +15,7 @@ import { MapRadar } from '@/widgets/map-radar';
 import { ROLE_TITLE, initials, type AppTab, APP_TABS, useUrlState } from './shared';
 
 // Аналитика с графиками (recharts) грузится, только когда её открыли
+const KpRegistryPage = lazy(() => import('../../KpRegistryPage/KpRegistryPage').then((m) => ({ default: m.KpRegistryPage })));
 const DashboardPage = lazy(() => import('../../DashboardPage/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ const TopBar: React.FC<{ tab: AppTab; onTab: (t: AppTab) => void }> = ({ tab, on
         {([
           ['map_view', 'Обстановка'],
           ['analytics', 'Аналитика'],
+          ['kp', 'Площадки'],
         ] as const).map(([id, title]) => (
           <button
             key={id}
@@ -94,7 +96,10 @@ const TopBar: React.FC<{ tab: AppTab; onTab: (t: AppTab) => void }> = ({ tab, on
         ))}
       </nav>
       <div className="ml-auto flex items-center gap-4">
-        <Clock />
+        {/* На телефоне три раздела занимают всю ширину — часы прячем */}
+        <div className="hidden sm:block">
+          <Clock />
+        </div>
         {user && (
           <div className="hidden items-center gap-2.5 border-l border-border pl-4 lg:flex">
             <div className="text-right leading-tight">
@@ -259,7 +264,23 @@ const LeftPanel: React.FC = () => {
       <div className="flex flex-col gap-2 border-t border-border px-4 pb-2 pt-3">
         <div className="flex items-center justify-between">
           <h2 className="eyebrow m-0 !text-foreground/80">Лента обращений</h2>
-          <span className="font-num text-[11px] text-muted-foreground">{feed.length}</span>
+          <span className="flex items-center gap-2">
+            <span className="font-num text-[11px] text-muted-foreground">{feed.length}</span>
+            <button
+              type="button"
+              onClick={async () => {
+                const { exportIncidentsXlsx } = await import('@/entities/incident/lib/exportXlsx');
+                const stamp = new Date().toISOString().slice(0, 10);
+                await exportIncidentsXlsx(feed, Date.now(), `obrashcheniya-${stamp}.xlsx`);
+              }}
+              disabled={feed.length === 0}
+              title="Выгрузить ленту в Excel (с текущими фильтрами)"
+              aria-label="Выгрузить ленту в Excel"
+              className="grid size-6 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground disabled:opacity-40"
+            >
+              <Download className="size-3.5" />
+            </button>
+          </span>
         </div>
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -409,6 +430,7 @@ export const DispatchLayout: React.FC = () => {
   const [tab, setTab] = useUrlState<AppTab>('map_view', APP_TABS);
   const user = useAuthStore((s) => s.currentUser);
   const selected = useIncidentStore((s) => s.selectedIncident);
+  const selectIncident = useIncidentStore((s) => s.selectIncident);
   const list = useFilteredIncidents();
   const counts = countByStatus(list);
 
@@ -421,7 +443,18 @@ export const DispatchLayout: React.FC = () => {
         <TopBar tab={tab} onTab={setTab} />
       </div>
 
-      {tab === 'analytics' ? (
+      {tab === 'kp' ? (
+        <div className="relative z-10 lg:h-full lg:min-h-0 lg:pt-[72px]">
+          <Suspense fallback={<div className="eyebrow p-6">Загружаю реестр…</div>}>
+            <KpRegistryPage
+              onOpenIncident={(id) => {
+                selectIncident(id);
+                setTab('map_view');
+              }}
+            />
+          </Suspense>
+        </div>
+      ) : tab === 'analytics' ? (
         <div className="relative z-10 h-full overflow-y-auto lg:pt-[72px]">
           <div className="mx-auto max-w-[1600px]">
             <Suspense fallback={<div className="eyebrow p-6">Загружаю аналитику…</div>}>

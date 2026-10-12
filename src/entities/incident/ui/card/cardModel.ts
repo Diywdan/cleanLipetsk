@@ -3,8 +3,6 @@ import { SOURCE_TITLE, formatDateTime } from '../../lib/presentation';
 import { useIncidentCard } from '../../lib/useIncidentCard';
 import { useIncidentStore } from '../../model/incidentStore';
 import { getPrimaryResponsible } from '../../lib/responsibles';
-import type { CardActionHandlers } from './parts';
-import afterPhoto from '@/assets/demo/kp-after.svg';
 
 // Доля прошедшего срока: от подтверждения до дедлайна
 export function slaShare(incident: IIncident, msLeft: number): number {
@@ -24,16 +22,6 @@ export function useCardModel() {
   const close = useIncidentStore((s) => s.selectIncident);
   const incident = card.selectedIncident;
 
-  const handlers: CardActionHandlers = {
-    confirmIncident: card.confirmIncident,
-    rejectIncident: card.rejectIncident,
-    approveIncident: card.approveIncident,
-    submitPhotoReport: card.submitPhotoReport,
-    selectedDeadline: card.selectedDeadline,
-    setSelectedDeadline: card.setSelectedDeadline,
-    afterPhoto,
-  };
-
   return {
     incident,
     primary: incident ? getPrimaryResponsible(incident) : undefined,
@@ -46,7 +34,6 @@ export function useCardModel() {
       label: card.slalabel,
       active: Boolean(incident?.timeline.deadlineAt && incident.status === 'IN_PROGRESS'),
     },
-    handlers,
     close: () => close(null),
   };
 }

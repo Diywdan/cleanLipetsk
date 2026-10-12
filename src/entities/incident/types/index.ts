@@ -104,6 +104,7 @@ export interface IIncidentTimeline {
   validatedAt?: string;    // Время подтверждения инспектором (Цель: до 1 суток)
   deadlineAt?: string;     // Динамический дедлайн для УК (24-72ч)
   closedAt?: string;       // Время закрытия инцидента
+  resolution?: 'FIXED' | 'FALSE_POSITIVE'; // чем закрыто: устранено или сигнал не подтвердился
   history?: IHistoryEvent[];
 }
 
@@ -113,6 +114,15 @@ export interface IHistoryEvent {
   title: string;
   description: string;
   type: 'AI' | 'INSPECTOR' | 'UK' | 'SYSTEM';
+}
+
+// Фотоотчёт исполнителя: снимок и где/когда он сделан — по этому инспектор судит, что снято на месте
+export interface IPhotoReport {
+  photoUrl: string;
+  takenAt: string;               // время съёмки (из файла) или отправки
+  coords?: [number, number];     // [долгота, широта] телефона в момент отправки
+  distanceM?: number;            // расстояние до площадки, м
+  comment?: string;
 }
 
 // 8. Единый монолитный интерфейс инцидента (Главная сущность системы)
@@ -129,6 +139,7 @@ export interface IIncident {
   media: {
     photoBeforeUrl: string;   // Снимок нарушения от ИИ
     photoAfterUrl?: string;   // Снимок убранной площадки от УК
+    report?: IPhotoReport;    // подробности фотоотчёта
     boundingBoxes: IBoundingBox[];
   };
 }

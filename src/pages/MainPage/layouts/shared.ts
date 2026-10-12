@@ -3,7 +3,7 @@ import type { UserRole } from '@/entities/user/types';
 
 // Общее для раскладок тем: разделы, подписи ролей, инициалы, номер выпуска.
 
-export type AppTab = 'map_view' | 'analytics';
+export type AppTab = 'map_view' | 'analytics' | 'kp';
 
 export const ROLE_TITLE: Record<UserRole, string> = {
   INSPECTOR: 'Инспектор ДРТ',
@@ -49,4 +49,4 @@ export function useUrlState<T extends string>(fallback: T, allowed: readonly T[]
   return [value, set];
 }
 
-export const APP_TABS = ['map_view', 'analytics'] as const;
+export const APP_TABS = ['map_view', 'analytics', 'kp'] as const;

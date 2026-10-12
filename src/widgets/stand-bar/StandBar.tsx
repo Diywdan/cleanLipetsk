@@ -1,5 +1,7 @@
 import React from 'react';
+import { RotateCcw } from 'lucide-react';
 import { useAuthStore } from '@/entities/user/model/authStore';
+import { useIncidentStore } from '@/entities/incident/model/incidentStore';
 import type { UserRole } from '@/entities/user/types';
 import { useStandStore, type DatasetId, type ModeId } from '@/shared/theme/standStore';
 
@@ -62,6 +64,9 @@ const Segmented: React.FC<{
 export const StandBar: React.FC = () => {
   const { dataset, setDataset, mode, setMode } = useStandStore();
   const { currentUser, switchDevRole } = useAuthStore();
+  const resetDemo = useIncidentStore((s) => s.resetDemo);
+  const canReset = useIncidentStore((s) => Boolean(s.api?.reset));
+  const persistent = useIncidentStore((s) => s.persistent);
 
   const setRole = (role: string) => {
     if (role === 'UK') switchDevRole('UK', 'DRT', 'УК "Левобережная"');
@@ -90,6 +95,20 @@ export const StandBar: React.FC = () => {
           value={currentUser?.role ?? 'INSPECTOR'}
           onChange={setRole}
         />
+        {canReset && (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Вернуть все обращения стенда в исходное состояние? Ваши действия на стенде сотрутся.')) resetDemo();
+            }}
+            title={persistent ? 'Действия на стенде сохраняются в этом браузере. Сбросить к исходным данным' : 'Хранилище браузера недоступно: действия пропадут после перезагрузки'}
+            className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-white/75 hover:bg-white/10 hover:text-white"
+          >
+            <RotateCcw className="size-3.5" />
+            <span className="hidden lg:inline">Сбросить демо</span>
+            {!persistent && <span className="size-1.5 rounded-full bg-[#F5B83D]" aria-label="не сохраняется" />}
+          </button>
+        )}
       </div>
     </div>
   );

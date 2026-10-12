@@ -4,7 +4,9 @@ import type { UserRole } from '@/entities/user/types';
 import { STATUS_META } from '../../lib/presentation';
 import { StatusTag } from '../StatusTag';
 import { useCardModel, sourceLine } from './cardModel';
-import { AiToggle, CardActions, HistoryList, KpValue, PhotoEvidence, ResponsiblesList, SlaMeter } from './parts';
+import { CardActions } from './CardActions';
+import { ReportMeta } from './PhotoReportForm';
+import { AiToggle, HistoryList, KpValue, PhotoEvidence, ResponsiblesList, SlaMeter } from './parts';
 
 // «Диспетчерская»: карточка — стеклянная панель над картой.
 // Вверху светится полоса цвета стадии, цифры моноширинные, фото в видоискателе.
@@ -67,6 +69,7 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
 
         <Section title="Фотофиксация" aside={!inc.media.photoAfterUrl && <AiToggle checked={m.showAi} onChange={m.setShowAi} />}>
           <PhotoEvidence incident={inc} showAi={m.showAi} />
+          <ReportMeta incident={inc} />
         </Section>
 
         <div className="grid grid-cols-2 gap-2">
@@ -93,7 +96,8 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
       </div>
 
       <footer className="shrink-0 border-t border-border bg-[var(--inset)] px-5 py-4">
-        <CardActions incident={inc} role={role} h={m.handlers} />
+        {/* key: при переключении дела сбрасываем шаги «почему ложное» / «что доделать» */}
+        <CardActions key={inc.id} incident={inc} role={role} />
       </footer>
     </article>
   );

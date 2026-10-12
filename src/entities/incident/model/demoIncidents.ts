@@ -6,6 +6,7 @@ import type {
   IncidentStatus,
   IOrganization,
 } from '../types';
+import type { IKpCard } from '@/entities/kp/types';
 import { MOCK_LIPETSK_INCIDENTS } from './mockIncidents';
 // Условные снимки площадки (рисунок, не фото): навал слева и строительный мусор справа
 import photoBefore from '@/assets/demo/kp-before.svg';
@@ -57,6 +58,44 @@ const SOURCES: IncidentSource[] = [
 ];
 
 // Сколько обращений какого статуса и сколько из «в работе» уже просрочено
+// ── Справочник площадок ─────────────────────────────────────────────────────
+// Отдельный генератор, чтобы набор обращений не менялся от числа площадок.
+// Обращения с КП садятся на эти площадки, причём первые — чаще: так в реестре
+// видны адреса с повторными нарушениями.
+const rndKp = mulberry32(4848);
+const pickKp = <T,>(items: readonly T[]): T => items[Math.floor(rndKp() * items.length)];
+const betweenKp = (a: number, b: number) => a + rndKp() * (b - a);
+const KP_COUNT = 16;
+
+export const DEMO_KP: IKpCard[] = Array.from({ length: KP_COUNT }, (_, n) => {
+  const area = pickKp(AREAS);
+  const [lonMin, lonMax, latMin, latMax] = area.box;
+  const uk = pickKp(UK);
+  const code = `LP-${String(120 + n * 173).padStart(6, '0')}`;
+  return {
+    id: `kp_${String(n + 1).padStart(3, '0')}`,
+    code,
+    registryNumber: `${String(3700 + n * 41).padStart(7, '0')}-48`,
+    location: {
+      address: `${pickKp(area.streets)}, ${Math.floor(betweenKp(1, 120))}`,
+      coordinates: [betweenKp(lonMin, lonMax), betweenKp(latMin, latMax)],
+      cadastralNumber: `48:20:00${Math.floor(betweenKp(1000, 4999))}:${Math.floor(betweenKp(10, 99))}`,
+      upravaId: pickKp(area.upravas),
+    },
+    containers: { tko: Math.floor(betweenKp(2, 6)), separate: rndKp() < 0.5 ? 1 : 0, kgmBay: rndKp() < 0.4 },
+    surface: pickKp(['ASPHALT', 'ASPHALT', 'CONCRETE', 'SOIL'] as const),
+    fenced: rndKp() < 0.7,
+    responsibles: [
+      { role: 'site_maintenance', organization: uk, confirmed: rndKp() > 0.2 },
+      { role: 'waste_removal', organization: REG_OPERATOR, confirmed: true },
+    ],
+    dataSource: pickKp(['FGIS_UTKO', 'FGIS_UTKO', 'FIELD_CHECK'] as const),
+    checkedAt: new Date(Date.now() - betweenKp(5, 120) * 86_400_000).toISOString(),
+  };
+});
+// Чаще всего нарушения на первых площадках списка
+const siteFor = () => DEMO_KP[Math.floor(rndKp() ** 1.3 * KP_COUNT)];
+
 const PLAN: { status: IncidentStatus; count: number; overdue?: number }[] = [
   { status: 'NEW', count: 7 },
   { status: 'IN_PROGRESS', count: 10, overdue: 3 },
@@ -147,28 +186,30 @@ function build(): IIncident[] {
       }
 
       const hasKp = rnd() > 0.18;
+      const site = hasKp ? siteFor() : null;
+      const kpScore = Math.round(between(0.6, 1) * 100) / 100;
+      const kpMethod = pick(['explicit', 'registry_house', 'nearest_single', 'nearest_multi'] as const);
+      const coords: [number, number] = [between(lonMin, lonMax), between(latMin, latMax)];
+      const cadastral = `48:20:00${Math.floor(between(1000, 4999))}:${Math.floor(between(10, 99))}`;
+      const executor = site ? site.responsibles[0].organization : uk;
+      if (site) {
+        // Текст хроники ссылается на адрес — обновляем на адрес площадки
+        history[0].description = `${viol.map((b) => b.label).join(', ')}. Адрес: ${site.location.address}.`;
+        if (history[1]) history[1].description = `Инспектор направил уведомление в ${executor.name}, срок ${hours} ч.`;
+      }
       out.push({
         id,
         status,
         source,
         priority: source === 'DIRECT_ORDER' || source === 'GOVERNOR_PORTAL' ? 'HIGH' : pick(['LOW', 'MEDIUM', 'MEDIUM', 'HIGH'] as const),
-        location: {
-          address: `${street}, ${house}`,
-          coordinates: [between(lonMin, lonMax), between(latMin, latMax)],
-          cadastralNumber: `48:20:00${Math.floor(between(1000, 4999))}:${Math.floor(between(10, 99))}`,
-          upravaId: pick(area.upravas),
-        },
-        kp: hasKp
-          ? {
-              kpId: `kp_${id}`,
-              code: `LP-${String(Math.floor(between(100, 3062))).padStart(6, '0')}`,
-              registryNumber: `${String(Math.floor(between(1000, 9999))).padStart(7, '0')}-48`,
-              score: Math.round(between(0.6, 1) * 100) / 100,
-              method: pick(['explicit', 'registry_house', 'nearest_single', 'nearest_multi'] as const),
-            }
+        location: site
+          ? { ...site.location }
+          : { address: `${street}, ${house}`, coordinates: coords, cadastralNumber: cadastral, upravaId: pick(area.upravas) },
+        kp: site
+          ? { kpId: site.id, code: site.code, registryNumber: site.registryNumber, score: kpScore, method: kpMethod }
           : null,
         responsibles: [
-          { role: 'site_maintenance', organization: uk, confirmed: rnd() > 0.2, recidivismCount: Math.floor(rnd() ** 2 * 6) },
+          { role: 'site_maintenance', organization: executor, confirmed: rnd() > 0.2, recidivismCount: Math.floor(rnd() ** 2 * 6) },
           { role: 'waste_removal', organization: REG_OPERATOR, confirmed: true, recidivismCount: 0 },
         ],
         timeline: {

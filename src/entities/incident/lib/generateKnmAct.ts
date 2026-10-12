@@ -1,5 +1,6 @@
 import type { IIncident } from '../types';
 import { getPrimaryResponsible, getRecidivismCount } from './responsibles';
+import { SOURCE_TITLE, typoQuotes } from './presentation';
 
 /**
  * Вспомогательная функция для асинхронного скачивания локального шрифта и конвертации в Base64
@@ -26,12 +27,13 @@ const fetchLocalFontAsBase64 = async (url: string): Promise<string> => {
   });
 };
 
-export const generateKnmAct = async (incident: IIncident) => {
+// signer — ФИО инспектора для подписи; без него остаётся пустое место под подпись
+export const generateKnmAct = async (incident: IIncident, signer?: string) => {
   // jsPDF тяжёлый (~400 КБ с html2canvas) — тянем его только при выгрузке акта
   const { jsPDF } = await import('jspdf');
   const currentDate = new Date().toLocaleDateString('ru-RU');
   const primary = getPrimaryResponsible(incident);
-  const orgName = primary?.organization.name ?? 'не определена';
+  const orgName = typoQuotes(primary?.organization.name ?? 'не определена');
   const directorName = primary?.organization.directorName ?? 'не указан';
   const recidivism = getRecidivismCount(incident);
 
@@ -78,10 +80,12 @@ export const generateKnmAct = async (incident: IIncident) => {
     const splitAddress = actDoc.splitTextToSize(`2. Адрес расположения объекта: г. Липецк, ${incident.location.address}`, 160);
     actDoc.text(splitAddress, 20, y); 
     y += (splitAddress.length * 6);
+    const kp = incident.kp;
+    actDoc.text(`   Контейнерная площадка: ${kp ? `${kp.code}${kp.registryNumber ? `, реестр ${kp.registryNumber}` : ''}` : 'не определена'}`, 20, y); y += 6;
 
     actDoc.text(`3. Кадастровый номер земельного участка: ${incident.location.cadastralNumber || 'Не определен'}`, 20, y); y += 6;
-    actDoc.text(`4. Первичный источник сигнала нарушения: ${incident.source}`, 20, y); y += 6;
-    actDoc.text(`5. Дата фиксации нарушения нейросетью: ${new Date(incident.timeline.createdAt).toLocaleString('ru-RU')}`, 20, y); y += 6;
+    actDoc.text(`4. Первичный источник сигнала нарушения: ${SOURCE_TITLE[incident.source] ?? incident.source}`, 20, y); y += 6;
+    actDoc.text(`5. Дата поступления сигнала: ${new Date(incident.timeline.createdAt).toLocaleString('ru-RU')}`, 20, y); y += 6;
     actDoc.text(`6. Регламентный срок (SLA) на добровольную уборку: ИСТЕК`, 20, y); y += 12;
 
     actDoc.setFontSize(11);
@@ -89,14 +93,14 @@ export const generateKnmAct = async (incident: IIncident) => {
     actDoc.setFontSize(10);
     actDoc.text(`Управляющая организация (Балансодержатель): ${orgName}`, 20, y); y += 6;
     actDoc.text(`Ответственный руководитель: ${directorName}`, 20, y); y += 6;
-    actDoc.text(`Статистика повторности (Рецидивов) по адресу: ${recidivism}-й случай за месяц.`, 20, y); y += 12;
+    actDoc.text(`Нарушений по адресу за месяц: ${recidivism}`, 20, y); y += 12;
 
     actDoc.text('ЗАКЛЮЧЕНИЕ И НАДЗОРНЫЙ КОНТУР:', 20, y); y += 6;
     const splitConclusion = actDoc.splitTextToSize('Учитывая, что Управляющая компания просрочила регламентные сроки SLA оперативного реагирования и на момент истечения таймера не предоставила фотоотчет, материалы дела направляются в ГЖИ для возбуждения административного производства.', 160);
     actDoc.text(splitConclusion, 20, y);
     y += (splitConclusion.length * 6) + 20;
 
-    actDoc.text('Подпись ответственного инспектора ДРТ: _______________________ (Алексей ДРТ)', 20, y);
+    actDoc.text(`Подпись ответственного инспектора ДРТ: _______________________ (${signer || 'Ф. И. О.'})`, 20, y);
 
     // Скачиваем Акт
     actDoc.save(`1_Акт_Осмотра_ДРТ_№_${incident.id}.pdf`);
@@ -134,9 +138,9 @@ export const generateKnmAct = async (incident: IIncident) => {
     y2 += (splitOrderText.length * 6) + 4;
 
     // Выделяем адрес жирным визуальным отступом
-    orderDoc.text(`👉 ЦЕЛЕВОЙ АДРЕС: г. Липецк, ${incident.location.address}`, 25, y2); y2 += 8;
+    orderDoc.text(`ЦЕЛЕВОЙ АДРЕС: г. Липецк, ${incident.location.address}`, 25, y2); y2 += 8;
     
-    orderDoc.text(`Внимание: по данному участку зафиксирован ${recidivism}-й случай повторного рецидива за текущий месяц.`, 20, y2); y2 += 8;
+    orderDoc.text(`Внимание: нарушений по этому адресу за текущий месяц — ${recidivism}.`, 20, y2); y2 += 8;
     
     const splitWarning = orderDoc.splitTextToSize('В случае невыполнения настоящего законного требования в установленный регламентом срок, материалы дела будут автоматически переданы в Государственную жилищную инспекцию (ГЖИ) Липецкой области для наложения штрафных санкций и принудительного взыскания через суд.', 160);
     orderDoc.text(splitWarning, 20, y2);
@@ -149,5 +153,7 @@ export const generateKnmAct = async (incident: IIncident) => {
 
   } catch (error) {
     console.error('Ошибка пакетной генерации документов ДРТ:', error);
+    // Пусть увидит инспектор: молча не скачавшийся акт хуже ошибки на экране
+    throw error instanceof Error ? error : new Error('Не удалось сформировать документы');
   }
 };

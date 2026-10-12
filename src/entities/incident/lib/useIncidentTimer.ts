@@ -23,12 +23,16 @@ export function useIncidentTimer(incidentId: string, deadlineAt?: string, status
   useEffect(() => {
     if (!active) return;
 
+    let done = false;
     const tick = () => {
+      if (done) return true;
       const t = Date.now();
       setNow(t);
       // КРИТИЧЕСКИЙ СЦЕНАРИЙ: время вышло — авто-перевод в надзорный контур ГЖИ Липецка
       if (deadlineMs - t <= 0) {
-        triggerKnmEscalation(incidentId);
+        // На КНМ уходит только дело в работе; отчёт на проверке инспектор решает сам
+        if (status === 'IN_PROGRESS') triggerKnmEscalation(incidentId);
+        done = true; // первый тик и интервал не должны эскалировать дважды
         return true;
       }
       return false;
@@ -45,7 +49,7 @@ export function useIncidentTimer(incidentId: string, deadlineAt?: string, status
       clearTimeout(first);
       clearInterval(intervalId);
     };
-  }, [active, incidentId, deadlineMs, triggerKnmEscalation]);
+  }, [active, incidentId, deadlineMs, status, triggerKnmEscalation]);
 
   const timeLeft = active ? Math.max(0, deadlineMs - now) : 0;
 
