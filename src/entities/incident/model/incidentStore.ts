@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { type IIncident, type IncidentStatus } from '../types';
+import { resolveDeadlineHours, type DeadlineHours } from '../lib/sla';
 
 // Описываем интерфейс нашего хранилища
 interface IncidentStore {
@@ -13,7 +14,7 @@ interface IncidentStore {
   selectIncident: (id: string | null) => void;
   
   // Экшены переходов по Маршрутной карте (State Machine)
-  confirmIncident: (id: string, deadlineHours: 24 | 48 | 72 | 720) => void; // Шаг 6: Уведомить владельца
+  confirmIncident: (id: string, deadlineHours: DeadlineHours) => void; // Шаг 6: Уведомить владельца
   submitPhotoReport: (id: string, photoAfterUrl: string) => void;     // Шаг 7: УК отчиталась
   approveIncident: (id: string) => void;                              // Шаг 8: Закрыть (Устранено)
   rejectIncident: (id: string) => void;                               // Возврат на доработку в УК
@@ -33,29 +34,13 @@ export const useIncidentStore = create<IncidentStore>((set) => ({
     selectedIncident: id ? state.incidents.find((inc) => inc.id === id) || null : null
   })),
 
-  // Шаг 1: Инспектор подтверждает нарушение и запускает таймер для УК (Шаг 6 по регламенту)
+  // Шаг 1: Инспектор подтверждает нарушение и запускает таймер для УК (Шаг 6 по регламенту).
+  // Срок берётся из матрицы SLA: для части источников он фиксирован, иначе — выбор инспектора.
   confirmIncident: (id, deadlineHours) => set((state) => {
     const now = new Date();
-
-      // Находим текущий инцидент в массиве, чтобы посмотреть его источник (source)
-    const targetIncident = state.incidents.find((inc) => inc.id === id);
-    
-    // Значение по умолчанию — то, что инспектор выбрал руками на панели (24, 48 или 72ч)
-    let hoursToResolve = deadlineHours;
-
-    if (targetIncident) {
-      // АВТОМАТИЧЕСКАЯ МАТРИЦА SLA СОГЛАСНО РЕГЛАМЕНТУ ДРТ
-      if (targetIncident.source === 'DIRECT_ORDER') {
-        hoursToResolve = 24; // Личное указание руководства — строго 1 день [1]
-      } else if (targetIncident.source === 'GOVERNOR_PORTAL') {
-        hoursToResolve = 72; // Портал губернатора — строго 3 дня [1]
-      } else if (targetIncident.source === 'DELO_WEB') {
-        hoursToResolve = 720; // Официальный контур Дело-web — норматив до 30 дней [1]
-      }
-    }
-
-    const deadline = new Date();
-    deadline.setHours(now.getHours() + deadlineHours); // Динамический расчет дедлайна (24-72ч)
+    const target = state.incidents.find((inc) => inc.id === id);
+    const hours = target ? resolveDeadlineHours(target.source, deadlineHours) : deadlineHours;
+    const deadline = new Date(now.getTime() + hours * 60 * 60 * 1000);
 
     const updatedIncidents = state.incidents.map((inc) => {
       if (inc.id !== id) return inc;

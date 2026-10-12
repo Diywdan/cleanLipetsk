@@ -23,23 +23,10 @@ export function useIncidentCard() {
     selectedIncident?.status
   );
 
-  // Карточка сама решает, какую цифру отправить в стор, избавляя нас от useEffect лагов!
+  // Срок по матрице SLA применяет стор (lib/sla.ts) — здесь только передаём выбор инспектора
   const handleConfirm = () => {
     if (!selectedIncident) return;
-
-    let finalHours: 24 | 48 | 72 | 720 = selectedDeadline;
-
-    // Жесткая проверка ведомственного регламента Липецка перед отправкой в Zustand
-    if (selectedIncident.source === 'DIRECT_ORDER') {
-      finalHours = 24;      // Начальство — строго сутки [1]
-    } else if (selectedIncident.source === 'GOVERNOR_PORTAL') {
-      finalHours = 72;      // Губернатор — строго 3 дня [1]
-    } else if (selectedIncident.source === 'DELO_WEB') {
-      finalHours = 720;     // Дело-web — строго 30 дней [1]
-    }
-
-    // Отправляем в стор гарантированно правильную цифру
-    confirmIncident(selectedIncident.id, finalHours);
+    confirmIncident(selectedIncident.id, selectedDeadline);
   };
 
   return {
