@@ -1,3 +1,6 @@
+import { STATUS_META } from "@/entities/incident/lib/presentation";
+import type { IncidentStatus } from "@/entities/incident/types";
+
 let ymapsLoadPromise: Promise<any> | null = null;
 
 export function loadYmaps3(apiKey: string): Promise<any> {
@@ -50,33 +53,31 @@ export function loadYmaps3(apiKey: string): Promise<any> {
   return ymapsLoadPromise;
 }
 
-export function statusColor(status: string): string {
-  const colors: Record<string, string> = {
-    NEW: "bg-blue-500 border-blue-200",
-    IN_PROGRESS: "bg-amber-500 border-amber-200",
-    VERIFICATION: "bg-purple-500 border-purple-200",
-    CLOSED: "bg-emerald-500 border-emerald-200",
-  };
-  return colors[status] || "bg-rose-600 border-rose-300 animate-pulse";
-}
-
 export function createMarkerElement(
-  status: string,
+  status: IncidentStatus,
   isSelected: boolean,
   onClick: () => void,
 ): HTMLDivElement {
   const el = document.createElement("div");
- // Собираем декларативные Tailwind v4 классы
-  const baseClasses = "w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-md cursor-pointer transition-all transform hover:scale-125 duration-200 -translate-x-1/2 -translate-y-1/2";
-  const selectedClasses = isSelected ? "ring-4 ring-offset-2 ring-blue-500 scale-110 z-50" : "z-10";
-  const statusColorClass = statusColor(status);
+  const color = STATUS_META[status]?.dot ?? "#5C6B7A";
+  const size = isSelected ? 26 : 18;
 
-  el.className = `${baseClasses} ${selectedClasses} ${statusColorClass}`;
-
-  const dot = document.createElement("div");
-  dot.style.cssText =
-    "width:6px;height:6px;border-radius:9999px;background:#fff;";
-  el.appendChild(dot);
+  // Точка цвета статуса с белой обводкой; выбранная — крупнее и с синим кольцом
+  el.style.cssText = [
+    `width:${size}px`,
+    `height:${size}px`,
+    "border-radius:9999px",
+    `background:${color}`,
+    "border:3px solid #fff",
+    isSelected
+      ? "box-shadow:0 0 0 3px #0D4CD3, 0 2px 6px rgba(11,31,51,.35)"
+      : "box-shadow:0 1px 4px rgba(11,31,51,.35)",
+    "transform:translate(-50%,-50%)",
+    "cursor:pointer",
+    `position:relative;z-index:${isSelected ? 50 : 10}`,
+    "transition:width .15s,height .15s",
+  ].join(";");
+  el.title = STATUS_META[status]?.label ?? "";
 
   el.onclick = (e) => {
     e.stopPropagation();

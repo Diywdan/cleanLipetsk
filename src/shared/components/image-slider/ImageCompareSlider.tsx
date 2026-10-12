@@ -57,7 +57,7 @@ export const ImageCompareSlider: React.FC<ImageCompareSliderProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative select-none overflow-hidden rounded-lg bg-slate-900 w-full aspect-video md:min-h-75 border border-slate-200 shadow-inner ${className}`}
+      className={`relative select-none overflow-hidden rounded-md bg-ink w-full aspect-video ${className}`}
       onMouseDown={() => setIsDragging(true)}
       onTouchMove={(e) => {
         if (e.touches.length > 0) handleMove(e.touches[0].clientX);
@@ -73,8 +73,8 @@ export const ImageCompareSlider: React.FC<ImageCompareSliderProps> = ({
         className="absolute inset-0 overflow-hidden pointer-events-none z-20"
         style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}
       >
-        <div className="absolute bottom-3 right-3 whitespace-nowrap bg-emerald-600/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded backdrop-blur-xs">
-          Результат (Стало)
+        <div className="absolute bottom-3 right-3 whitespace-nowrap rounded bg-[#0A6B34] px-2 py-0.5 text-[12px] text-white">
+          Стало
         </div>
       </div>
 
@@ -92,8 +92,8 @@ export const ImageCompareSlider: React.FC<ImageCompareSliderProps> = ({
             style={{ width: containerRef.current?.getBoundingClientRect().width || '100%', height: '100%' }}
           />
         </div>
-        <div className="absolute top-3 left-3 whitespace-nowrap bg-blue-600/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded backdrop-blur-xs z-20">
-          Фиксация (Было)
+        <div className="absolute top-3 left-3 z-20 whitespace-nowrap rounded bg-ink/85 px-2 py-0.5 text-[12px] text-white">
+          Было
         </div>
       </div>
 

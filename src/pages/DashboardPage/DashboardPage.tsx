@@ -1,17 +1,30 @@
 import React from 'react';
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
 import { getPrimaryOrganizationName, getRecidivismCount } from '@/entities/incident/lib/responsibles';
+import { STATUS_META, STATUS_ORDER, typoQuotes } from '@/entities/incident/lib/presentation';
+import { StatTile } from '@/shared/components/stat-tile/StatTile';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { ShieldAlert, TrendingUp, CheckCircle, BarChart3 } from 'lucide-react';
+
+const AXIS = { stroke: '#5C6B7A', fontSize: 13, tickLine: false } as const;
+const TOOLTIP = {
+  contentStyle: { backgroundColor: '#fff', border: '1px solid #DCE3EB', borderRadius: 8, fontSize: 13 },
+};
+
+const Panel: React.FC<{ title: string; className?: string; children: React.ReactNode }> = ({ title, className = '', children }) => (
+  <section className={`flex flex-col rounded-lg border border-border bg-card ${className}`}>
+    <h2 className="border-b border-border px-5 py-3 text-[16px] font-semibold text-foreground">{title}</h2>
+    <div className="p-5">{children}</div>
+  </section>
+);
 
 export const DashboardPage: React.FC = () => {
   const { incidents } = useIncidentStore();
 
-  // Собираем статистику по УК из живого Zustand-стора
+  // Статистика по основному ответственному (тот, кто содержит площадку)
   const ukStatsMap: Record<string, { name: string; total: number; recidivism: number }> = {};
 
   incidents.forEach((inc) => {
-    const ukName = getPrimaryOrganizationName(inc);
+    const ukName = typoQuotes(getPrimaryOrganizationName(inc));
     if (!ukStatsMap[ukName]) {
       ukStatsMap[ukName] = { name: ukName, total: 0, recidivism: 0 };
     }
@@ -19,113 +32,79 @@ export const DashboardPage: React.FC = () => {
     ukStatsMap[ukName].recidivism += getRecidivismCount(inc) > 1 ? 1 : 0;
   });
 
-  const chartData = Object.values(ukStatsMap);
+  const chartData = Object.values(ukStatsMap).sort((a, b) => b.total - a.total);
 
-  // Статистика по статусам для круговой диаграммы
   const statusCounts = incidents.reduce((acc: Record<string, number>, inc) => {
     acc[inc.status] = (acc[inc.status] || 0) + 1;
     return acc;
   }, {});
 
-  const pieData = [
-    { name: 'Новые инциденты', value: statusCounts['NEW'] || 0, color: '#475569' },
-    { name: 'В работе у УК', value: statusCounts['IN_PROGRESS'] || 0, color: '#6366f1' },
-    { name: 'На верификации', value: statusCounts['VERIFICATION'] || 0, color: '#ec4899' },
-    { name: 'Эскалация в ГЖИ', value: statusCounts['KNM_ESCALATION'] || 0, color: '#be123c' },
-  ].filter(item => item.value > 0); // Показываем только те, которые есть
+  const pieData = STATUS_ORDER.map((status) => ({
+    name: STATUS_META[status].label,
+    value: statusCounts[status] || 0,
+    color: STATUS_META[status].dot,
+  })).filter((item) => item.value > 0);
+
+  const critical = incidents.filter((i) => getRecidivismCount(i) > 2).length;
+  const done = incidents.filter((i) => i.status === 'VERIFICATION' || i.status === 'CLOSED').length;
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen text-slate-900 flex flex-col gap-6 w-full">
-      {/* Шапка дашборда для руководства Липецка */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-            <BarChart3 className="text-blue-600 w-6 h-6" /> Сводный аналитический дашборд ДРТ Липецка
-          </h2>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Оперативная витрина эффективности Управляющих компаний по контролю благоустройства ТКО
-          </p>
-        </div>
+    <div className="flex w-full flex-col gap-6 p-4 md:p-6">
+      <div>
+        <h1 className="text-[24px] font-semibold leading-tight text-foreground">Аналитика по исполнителям</h1>
+        <p className="mt-1 text-[14px] text-muted-foreground">
+          Обращения и повторные нарушения по организациям, которые содержат площадки
+        </p>
       </div>
 
-      {/* БЛОК КАРТОЧЕК ВЕРХНЕГО УРОВНЯ (KPI) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex items-center gap-4">
-          <div className="p-3 bg-blue-50 rounded-lg text-blue-600"><ShieldAlert className="w-6 h-6" /></div>
-          <div>
-            <span className="block text-xs text-slate-400 font-bold uppercase">Всего инцидентов в системе</span>
-            <span className="text-2xl font-black text-slate-700">{incidents.length}</span>
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex items-center gap-4">
-          <div className="p-3 bg-rose-50 rounded-lg text-rose-600"><TrendingUp className="w-6 h-6" /></div>
-          <div>
-            <span className="block text-xs text-slate-400 font-bold uppercase">Критические рецидивы УК</span>
-            <span className="text-2xl font-black text-rose-600">
-              {incidents.filter(i => getRecidivismCount(i) > 2).length}
-            </span>
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex items-center gap-4">
-          <div className="p-3 bg-emerald-50 rounded-lg text-emerald-600"><CheckCircle className="w-6 h-6" /></div>
-          <div>
-            <span className="block text-xs text-slate-400 font-bold uppercase">Дел на верификации / Закрыто</span>
-            <span className="text-2xl font-black text-emerald-600">
-              {incidents.filter(i => i.status === 'VERIFICATION' || i.status === 'CLOSED').length}
-            </span>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <StatTile label="Всего обращений" value={incidents.length} />
+        <StatTile label="Адресов с нарушением больше двух раз за месяц" value={critical} tone="danger" />
+        <StatTile label="На проверке или закрыто" value={done} />
       </div>
 
-      {/* СЕТКА ДИАГРАММ */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full">
-        {/* График 1: Столбчатая диаграмма нарушений по УК (7 колонок) */}
-        <div className="xl:col-span-7 bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col gap-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Антирейтинг Управляющих компаний (Количество инцидентов)
-          </h3>
-          <div className="w-full h-75">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <Panel title="Нарушения по управляющим компаниям" className="xl:col-span-7">
+          <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }} />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                <Bar dataKey="total" name="Всего нарушений" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="recidivism" name="Из них повторные" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="#EEF3F8" />
+                <XAxis dataKey="name" {...AXIS} />
+                <YAxis allowDecimals={false} {...AXIS} />
+                <Tooltip {...TOOLTIP} cursor={{ fill: '#F5F7FA' }} />
+                <Legend wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
+                <Bar dataKey="total" name="Всего нарушений" fill="#0D4CD3" radius={[3, 3, 0, 0]} maxBarSize={48} />
+                <Bar dataKey="recidivism" name="Из них повторные" fill="#EE3F58" radius={[3, 3, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </Panel>
 
-        {/* График 2: Круговая диаграмма долей статусов дел (5 колонок) */}
-        <div className="xl:col-span-5 bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col gap-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Разрез оперативных дел по стадиям контроля
-          </h3>
-          <div className="w-full h-75 flex items-center justify-center relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value">
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* Кастомная легенда списком справа */}
-            <div className="absolute right-2 bottom-2 flex flex-col gap-1 text-[11px] font-semibold text-slate-600">
-              {pieData.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span>{item.name}: <b className="text-slate-800">{item.value}</b></span>
-                </div>
-              ))}
+        <Panel title="Обращения по стадиям" className="xl:col-span-5">
+          <div className="flex flex-col items-center gap-4 sm:flex-row">
+            <div className="h-64 w-full sm:w-1/2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={62} outerRadius={96} paddingAngle={2} dataKey="value" stroke="#fff">
+                    {pieData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip {...TOOLTIP} />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
+            <ul className="flex w-full flex-col gap-2 sm:w-1/2">
+              {pieData.map((item) => (
+                <li key={item.name} className="flex items-center gap-2 text-[14px]">
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="text-foreground">{item.name}</span>
+                  <span className="ml-auto font-semibold text-foreground">{item.value}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
+        </Panel>
       </div>
     </div>
   );

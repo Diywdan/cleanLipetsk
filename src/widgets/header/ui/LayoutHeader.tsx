@@ -1,60 +1,119 @@
 import React from 'react';
 import { useAuthStore } from '@/entities/user/model/authStore';
-import { ShieldCheck, UserSquare2 } from 'lucide-react';
+import type { UserRole } from '@/entities/user/types';
+import { Landmark } from 'lucide-react';
 
-export const LayoutHeader: React.FC = () => {
+export type AppTab = 'map_view' | 'analytics';
+
+const ROLE_TITLE: Record<UserRole, string> = {
+  INSPECTOR: 'Инспектор ДРТ',
+  UK: 'Мастер управляющей компании',
+  ADMIN: 'Руководство',
+};
+
+const TABS: { id: AppTab; title: string; short: string }[] = [
+  { id: 'map_view', title: 'Карта и реестр', short: 'Карта' },
+  { id: 'analytics', title: 'Аналитика по исполнителям', short: 'Аналитика' },
+];
+
+interface TProps {
+  activeTab: AppTab;
+  onTabChange: (tab: AppTab) => void;
+}
+
+function initials(name: string): string {
+  return name
+    .replace(/\(.*?\)/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+}
+
+export const LayoutHeader: React.FC<TProps> = ({ activeTab, onTabChange }) => {
   const { currentUser, switchDevRole } = useAuthStore();
 
+  const roleButtons: { role: UserRole; title: string; onClick: () => void }[] = [
+    { role: 'INSPECTOR', title: 'Инспектор ДРТ', onClick: () => switchDevRole('INSPECTOR', 'DRT') },
+    { role: 'UK', title: 'Мастер УК', onClick: () => switchDevRole('UK', 'DRT', 'УК "Левобережная"') },
+    { role: 'ADMIN', title: 'Руководство', onClick: () => switchDevRole('ADMIN', 'DRT') },
+  ];
+
   return (
-    <>
-      {/* ГЛАВНАЯ СИСТЕМНАЯ ШАПКА */}
-      <header className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shadow-md border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-600 rounded-lg shadow-inner font-black tracking-wider text-sm">ЦК</div>
-          <div>
-            <h1 className="text-sm font-bold tracking-tight">Цифровой контур контроля благоустройства</h1>
-            <p className="text-[10px] text-slate-400 font-medium">Система ИИ-видеоаналитики объектов ТКО • г. Липецк</p>
+    <div className="shrink-0">
+      {/* Демонстрационный стенд: роли переключаются без входа, данные условные */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-ink px-4 py-1.5 md:px-6 text-[13px] text-white/75">
+        <span className="hidden sm:inline">Демонстрационный стенд · данные условные</span>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="hidden sm:inline">Смотреть как:</span>
+          <div className="flex rounded-md bg-white/10 p-0.5">
+            {roleButtons.map((b) => (
+              <button
+                key={b.role}
+                type="button"
+                onClick={b.onClick}
+                className={`cursor-pointer rounded px-2.5 py-0.5 transition-colors ${
+                  currentUser?.role === b.role
+                    ? 'bg-white text-ink'
+                    : 'text-white/80 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {b.title}
+              </button>
+            ))}
           </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 bg-slate-800 border border-slate-700/60 px-3 py-1.5 rounded-lg text-xs">
-          <UserSquare2 className="w-4 h-4 text-blue-400" />
-          <div>
-            <span className="block font-semibold text-slate-200">{currentUser?.name}</span>
-            <span className="block text-[10px] text-slate-400 font-medium uppercase tracking-wide">
-              Роль: {currentUser?.role} {currentUser?.organizationName && `| ${currentUser.organizationName}`}
-            </span>
-          </div>
-        </div>
-      </header>
-
-      {/* ПАНЕЛЬ РАЗРАБОТЧИКА (DEV TOOLBAR) */}
-      <div className="bg-blue-50 border-b border-blue-100 px-6 py-2 flex flex-wrap items-center gap-4 text-xs font-semibold text-blue-900 shadow-xs">
-        <div className="flex items-center gap-1 text-blue-700">
-          <ShieldCheck className="w-4 h-4" />
-          <span>Панель хакинга ролей (DEV-мод):</span>
-        </div>
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => switchDevRole('INSPECTOR', 'DRT')}
-            className={`px-2.5 py-1 rounded-md border font-bold transition-all ${currentUser?.role === 'INSPECTOR' ? 'bg-blue-700 text-white border-transparent shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-          >
-            👤 Войти как Инспектор ДРТ
-          </button>
-          <button
-            onClick={() => switchDevRole('UK', 'DRT', 'УК "Левобережная"')}
-            className={`px-2.5 py-1 rounded-md border font-bold transition-all ${currentUser?.role === 'UK' ? 'bg-amber-600 text-white border-transparent shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-          >
-            🚜 Войти как Мастер УК
-          </button>
-          <button
-            onClick={() => switchDevRole('ADMIN', 'DRT')}
-            className={`px-2.5 py-1 rounded-md border font-bold transition-all ${currentUser?.role === 'ADMIN' ? 'bg-purple-700 text-white border-transparent shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-          >
-            📊 Войти как Руководство (ЦУР)
-          </button>
         </div>
       </div>
-    </>
+
+      <header className="flex h-16 items-stretch gap-4 border-b border-border bg-card px-4 md:gap-8 md:px-6">
+        <div className="flex items-center gap-3">
+          <div className="grid size-10 place-items-center rounded-lg bg-primary text-primary-foreground">
+            <Landmark className="size-5" />
+          </div>
+          <div className="hidden leading-tight sm:block">
+            <div className="text-[17px] font-semibold text-foreground">Чистый Липецк</div>
+            <div className="hidden text-[13px] text-muted-foreground lg:block">
+              Контроль содержания контейнерных площадок
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex items-stretch gap-4 md:gap-6" aria-label="Разделы">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onTabChange(tab.id)}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+              className={`-mb-px cursor-pointer whitespace-nowrap border-b-2 text-[15px] transition-colors ${
+                activeTab === tab.id
+                  ? 'border-primary font-medium text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <span className="md:hidden">{tab.short}</span>
+              <span className="hidden md:inline">{tab.title}</span>
+            </button>
+          ))}
+        </nav>
+
+        {currentUser && (
+          <div className="ml-auto flex items-center gap-3">
+            <div className="hidden text-right leading-tight lg:block">
+              <div className="text-[14px] font-medium text-foreground">{currentUser.name}</div>
+              <div className="text-[13px] text-muted-foreground">
+                {ROLE_TITLE[currentUser.role]}
+                {currentUser.organizationName && ` · ${currentUser.organizationName}`}
+              </div>
+            </div>
+            <div className="grid size-9 place-items-center rounded-full bg-secondary text-[13px] font-semibold text-secondary-foreground">
+              {initials(currentUser.name)}
+            </div>
+          </div>
+        )}
+      </header>
+    </div>
   );
 };

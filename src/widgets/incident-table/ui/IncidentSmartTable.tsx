@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
-import { getStatusBadge } from '@/entities/incident/lib/cardUtils'; // Твоя утилита бейджей!
+import { getStatusBadge } from '@/entities/incident/lib/cardUtils';
 import { getPrimaryOrganizationName, getRecidivismCount } from '@/entities/incident/lib/responsibles';
+import { STATUS_META, STATUS_ORDER, formatDate, formatDateTime, typoQuotes } from '@/entities/incident/lib/presentation';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -18,18 +19,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, AlertCircle, Calendar, Building2 } from 'lucide-react';
+import { Search, Building2 } from 'lucide-react';
+
+const FILTER_TRIGGER = 'h-10 w-full bg-card text-[14px] sm:w-auto sm:min-w-48';
+const FILTER_ITEM = 'text-[14px]';
+const TH = 'h-10 text-[13px] font-medium text-muted-foreground';
 
 export const IncidentSmartTable: React.FC = () => {
   // 1. Достаем массив инцидентов и управление выбором из нашего Zustand-стора
   const { incidents, selectedIncident, selectIncident } = useIncidentStore();
-  
+
   // ЛОКАЛЬНЫЕ СТЕЙТЫ ДЛЯ РАСШИРЕННОЙ ФИЛЬТРАЦИИ
   const [searchQuery, setSearchQuery] = useState<string>(''); // поиск по адресу
-  const [searchUk, setSearchUk] = useState<string>('');       // поиск по названию УК (Новое!)
+  const [searchUk, setSearchUk] = useState<string>('');       // поиск по названию УК
   const [selectedUprava, setSelectedUprava] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all'); // фильтр по статусу (Новое!)
-  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all'); // фильтр по дате (Новое!)
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all');
 
   // Генерируем массив из 19 управ для выпадающего списка согласно регламенту ДРТ
   const lipetskUpravas = Array.from({ length: 19 }, (_, i) => i + 1);
@@ -38,19 +43,19 @@ export const IncidentSmartTable: React.FC = () => {
   const filteredIncidents = incidents.filter((incident) => {
     // 1. Проверка по адресу
     const matchesSearch = incident.location.address.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // 2. Проверка по названию ответственной УК
+
+    // 2. Проверка по названию любой ответственной организации
     const matchesUk = incident.responsibles.some((r) =>
       r.organization.name.toLowerCase().includes(searchUk.toLowerCase())
     );
-    
+
     // 3. Проверка по 19 Управам Липецка
     const matchesUprava = selectedUprava === 'all' || incident.location.upravaId === Number(selectedUprava);
-    
-    // 4. Проверка по Стадиям ведомственного контроля
+
+    // 4. Проверка по стадиям контроля
     const matchesStatus = selectedStatus === 'all' || incident.status === selectedStatus;
-    
-    // 5. Проверка по Дате регистрации инцидента
+
+    // 5. Проверка по дате регистрации
     let matchesDate = true;
     if (selectedDateFilter !== 'all') {
       const createdAt = new Date(incident.timeline.createdAt).getTime();
@@ -67,188 +72,146 @@ export const IncidentSmartTable: React.FC = () => {
         matchesDate = (now - createdAt) <= (7 * oneDayMs);
       }
     }
-    
+
     return matchesSearch && matchesUk && matchesUprava && matchesStatus && matchesDate;
   });
 
   return (
-    <div className="flex flex-col gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm w-full">
-      
-      {/* МОДЕРНИЗИРОВАННАЯ ВЕДОМСТВЕННАЯ ПАНЕЛЬ ФИЛЬТРАЦИИ ДРТ */}
-      <div className="flex flex-col gap-3 w-full border-b border-slate-100 pb-3">
-        
-        {/* СТРОКА 1: Текстовый поиск по адресам и Управляющим компаниям */}
-        <div className="flex flex-col md:flex-row gap-3 w-full">
-          {/* Текстовый поиск по улицам */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+    <section className="flex w-full shrink-0 flex-col rounded-lg border border-border bg-card">
+      <div className="flex items-baseline justify-between gap-4 border-b border-border px-5 py-3">
+        <h2 className="text-[16px] font-semibold text-foreground">Реестр обращений</h2>
+        <span className="text-[14px] text-muted-foreground">
+          Найдено: <span className="font-medium text-foreground">{filteredIncidents.length}</span>
+        </span>
+      </div>
+
+      {/* Фильтры */}
+      <div className="flex flex-col gap-3 border-b border-border px-5 py-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
             <Input
-              placeholder="Поиск по адресу нарушения (например, Космонавтов)..."
+              placeholder="Адрес, например «Космонавтов»"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9 text-xs focus-visible:ring-blue-600 w-full"
+              className="h-10 pl-9 text-[14px]"
+              aria-label="Поиск по адресу"
             />
           </div>
-
-          {/* Текстовый поиск по названию УК */}
-          <div className="relative flex-1">
-            <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+          <div className="relative">
+            <Building2 className="absolute left-3 top-3 size-4 text-muted-foreground" />
             <Input
-              placeholder="Поиск по названию ответственной УК..."
+              placeholder="Ответственная организация"
               value={searchUk}
               onChange={(e) => setSearchUk(e.target.value)}
-              className="pl-9 h-9 text-xs focus-visible:ring-blue-600 w-full"
+              className="h-10 pl-9 text-[14px]"
+              aria-label="Поиск по ответственной организации"
             />
           </div>
         </div>
 
-        {/* СТРОКА 2: Выпадающие селекторы (Управы, Статусы, Сроки) */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 w-full">
-          
-          {/* СУВЕРЕННЫЙ СЕЛЕКТОР 19 УПРАВ ЛИПЕЦКА */}
+        <div className="flex flex-wrap gap-3">
           <Select value={selectedUprava} onValueChange={setSelectedUprava}>
-            <SelectTrigger className="w-56 h-9 text-xs font-semibold text-slate-700 bg-slate-50 border-slate-200 focus:ring-blue-600">
-              <div className="flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                <SelectValue placeholder="Выбор округа" />
-              </div>
+            <SelectTrigger className={FILTER_TRIGGER} aria-label="Управа">
+              <SelectValue placeholder="Управа" />
             </SelectTrigger>
-            <SelectContent className="bg-white border-slate-200">
-              <SelectItem value="all" className="text-xs font-bold text-slate-700 focus:bg-slate-50">
-                Все 19 Управ города
-              </SelectItem>
+            <SelectContent>
+              <SelectItem value="all" className={FILTER_ITEM}>Все управы</SelectItem>
               {lipetskUpravas.map((num) => (
-                <SelectItem key={num} value={String(num)} className="text-xs font-medium text-slate-600 focus:bg-slate-50">
-                  Управа Округа №{num}
+                <SelectItem key={num} value={String(num)} className={FILTER_ITEM}>
+                  Управа округа № {num}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          {/* СЕЛЕКТОР СТАДИЙ КОНТРОЛЯ */}
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-48 h-9 text-xs font-semibold text-slate-700 bg-slate-50 border-slate-200 focus:ring-blue-600">
-              <div className="flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 text-slate-400" />
-                <SelectValue placeholder="Текущий статус" />
-              </div>
+            <SelectTrigger className={FILTER_TRIGGER} aria-label="Статус">
+              <SelectValue placeholder="Статус" />
             </SelectTrigger>
-            <SelectContent className="bg-white border-slate-200">
-              <SelectItem value="all" className="text-xs font-bold text-slate-700 focus:bg-slate-50">Все статусы контроля</SelectItem>
-              <SelectItem value="NEW" className="text-xs text-blue-600 font-semibold focus:bg-slate-50">Новые инциденты</SelectItem>
-              <SelectItem value="IN_PROGRESS" className="text-xs text-amber-600 font-semibold focus:bg-slate-50">В работе у УК (SLA)</SelectItem>
-              <SelectItem value="VERIFICATION" className="text-xs text-purple-500 font-semibold focus:bg-slate-50">На верификации</SelectItem>
-              <SelectItem value="KNM_ESCALATION" className="text-xs text-rose-600 font-semibold focus:bg-slate-50">Эскалация в КНМ</SelectItem>
-              <SelectItem value="CLOSED" className="text-xs text-emerald-500 font-semibold focus:bg-slate-50">Нарушение устранено</SelectItem>
+            <SelectContent>
+              <SelectItem value="all" className={FILTER_ITEM}>Все статусы</SelectItem>
+              {STATUS_ORDER.map((status) => (
+                <SelectItem key={status} value={status} className={FILTER_ITEM}>
+                  {STATUS_META[status].label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
-          {/* СЕЛЕКТОР ДАТЫ ПОСТУПЛЕНИЯ (Новое!) */}
           <Select value={selectedDateFilter} onValueChange={setSelectedDateFilter}>
-            <SelectTrigger className="w-44 h-9 text-xs font-semibold text-slate-700 bg-slate-50 border-slate-200 focus:ring-blue-600">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <SelectValue placeholder="Дата поступления" />
-              </div>
+            <SelectTrigger className={FILTER_TRIGGER} aria-label="Период поступления">
+              <SelectValue placeholder="Период" />
             </SelectTrigger>
-            <SelectContent className="bg-white border-slate-200">
-              <SelectItem value="all" className="text-xs font-bold text-slate-700 focus:bg-slate-50">📅 За всё время</SelectItem>
-              <SelectItem value="today" className="text-xs font-medium text-slate-600 focus:bg-slate-50">За сегодня</SelectItem>
-              <SelectItem value="3days" className="text-xs font-medium text-slate-600 focus:bg-slate-50">За последние 3 дня</SelectItem>
-              <SelectItem value="week" className="text-xs font-medium text-slate-600 focus:bg-slate-50">За неделю</SelectItem>
+            <SelectContent>
+              <SelectItem value="all" className={FILTER_ITEM}>За всё время</SelectItem>
+              <SelectItem value="today" className={FILTER_ITEM}>За сегодня</SelectItem>
+              <SelectItem value="3days" className={FILTER_ITEM}>За 3 дня</SelectItem>
+              <SelectItem value="week" className={FILTER_ITEM}>За неделю</SelectItem>
             </SelectContent>
           </Select>
-
-          {/* Динамический счетчик отфильтрованных инцидентов */}
-          <div className="ml-auto text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-50 px-2.5 py-1.5 rounded-md border border-slate-100 whitespace-nowrap">
-            Активных дел в контуре: <span className="text-slate-700 font-black">{filteredIncidents.length}</span>
-          </div>
         </div>
       </div>
 
-      {/* ТАБЛИЧНАЯ СЕТКА */}
-      <div className="border border-slate-100 rounded-lg overflow-hidden w-full">
-        <Table>
-          <TableHeader className="bg-slate-50/70 text-slate-400">
-            <TableRow className="hover:bg-transparent border-slate-100">
-              <TableHead className="w-20 text-xs font-bold uppercase tracking-wider text-slate-500 h-9">ID</TableHead>
-              <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 h-9">Адрес объекта благоустройства</TableHead>
-              <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 h-9">Текущий Статус</TableHead>
-              <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 h-9">Ответственная УК</TableHead>
-              <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 h-9">Повторность</TableHead>
-              <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 h-9 text-right">Поступление</TableHead>
+      <Table>
+        <TableHeader className="bg-muted">
+          <TableRow className="hover:bg-transparent">
+            <TableHead className={`${TH} w-20 pl-5`}>№</TableHead>
+            <TableHead className={TH}>Адрес</TableHead>
+            <TableHead className={TH}>Статус</TableHead>
+            <TableHead className={TH}>Ответственный</TableHead>
+            <TableHead className={`${TH} text-right`}>Раз за месяц</TableHead>
+            <TableHead className={`${TH} pr-5 text-right`}>Поступило</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredIncidents.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="h-24 text-center text-[14px] text-muted-foreground">
+                Обращений с такими условиями нет. Измените фильтры.
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredIncidents.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-xs text-slate-400 font-medium">
-                  <div className="flex flex-col items-center justify-center gap-1.5">
-                    <AlertCircle className="w-5 h-5 text-slate-300 stroke-1.5" />
-                    <span>По вашему поисковому запросу инцидентов в Липецке не найдено</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredIncidents.map((incident) => {
-                const isSelected = selectedIncident?.id === incident.id;
-                
-                return (
-                  <TableRow
-                    key={incident.id}
-                    onClick={() => selectIncident(incident.id)}
-                    className={`cursor-pointer transition-colors border-slate-100/60 ${
-                      isSelected 
-                        ? 'bg-blue-50/50 hover:bg-blue-50/70 border-l-4 border-l-blue-600 font-medium' 
-                        : 'hover:bg-slate-50/50'
-                    }`}
-                  >
-                    {/* ID дела */}
-                    <TableCell className="font-mono text-xs font-bold text-slate-500">
-                      #{incident.id}
-                    </TableCell>
-                    
-                    {/* Адрес */}
-                    <TableCell className="text-xs font-semibold text-slate-700">
-                      {incident.location.address}
-                    </TableCell>
-                    
-                    {/* Статус ведомственного контроля */}
-                    <TableCell className="h-9 py-1">
-                      {getStatusBadge(incident.status)}
-                    </TableCell>
-                    
-                    {/* Ответственная организация */}
-                    <TableCell className="text-xs text-slate-600 font-medium">
-                      {getPrimaryOrganizationName(incident)}
-                    </TableCell>
-                    
-                    {/* Метрика рецидивов */}
-                    <TableCell className="text-xs font-medium">
-                      <span className={`px-2 py-0.5 rounded-sm text-[10px] font-bold ${
-                        getRecidivismCount(incident) > 2 
-                          ? 'bg-rose-50 text-rose-600 border border-rose-100' 
-                          : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {getRecidivismCount(incident)}-й инцидент
-                      </span>
-                    </TableCell>
-                    
-                    {/* Дата поступления сигнала ИИ */}
-                    <TableCell className="text-right text-xs text-slate-400 font-medium">
-                      <span className="inline-flex items-center gap-1">
-                        <Calendar className="w-3 h-3 stroke-1.5" />
-                        {new Date(incident.timeline.createdAt).toLocaleDateString('ru-RU')}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+          ) : (
+            filteredIncidents.map((incident) => {
+              const isSelected = selectedIncident?.id === incident.id;
+              const repeats = getRecidivismCount(incident);
 
-    </div>
+              return (
+                <TableRow
+                  key={incident.id}
+                  onClick={() => selectIncident(incident.id)}
+                  aria-selected={isSelected}
+                  className={`h-12 cursor-pointer text-[14px] ${
+                    isSelected
+                      ? 'bg-secondary shadow-[inset_3px_0_0_var(--primary)] hover:bg-secondary'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  <TableCell className="pl-5 text-muted-foreground">{incident.id}</TableCell>
+                  <TableCell className="whitespace-normal font-medium text-foreground">
+                    {incident.location.address}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(incident.status)}</TableCell>
+                  <TableCell className="text-foreground">
+                    {typoQuotes(getPrimaryOrganizationName(incident))}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right ${repeats > 2 ? 'font-semibold text-danger' : 'text-foreground'}`}
+                  >
+                    {repeats > 0 ? repeats : '—'}
+                  </TableCell>
+                  <TableCell
+                    className="pr-5 text-right text-muted-foreground"
+                    title={formatDateTime(incident.timeline.createdAt)}
+                  >
+                    {formatDate(incident.timeline.createdAt)}
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </section>
   );
 };

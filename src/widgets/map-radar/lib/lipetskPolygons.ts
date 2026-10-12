@@ -3,8 +3,8 @@ export const LIPETSK_POLYGONS = [
   {
     id: 'poly_uk_levber',
     organizationName: 'УК "Левобережная"',
-    color: 'rgba(59, 130, 246, 0.25)', // Полупрозрачный синий контур УК
-    borderColor: '#3b82f6',
+    color: 'rgba(13, 76, 211, 0.12)', // Зона УК: госсиний, едва заметная заливка
+    borderColor: '#0D4CD3',
     // Координаты углов двора [lng, lat] вокруг улицы Космонавтов
     coordinates: [
       [
@@ -19,8 +19,8 @@ export const LIPETSK_POLYGONS = [
   {
     id: 'poly_uk_pravber', // Поменяли ID на соответствующий УК
     organizationName: 'УК "Правобережная"', // Исправили название на ответственное юрлицо!
-    color: 'rgba(168, 85, 247, 0.2)', // Сделали красивый фиолетовый контур (под цвет статуса проверки)
-    borderColor: '#a855f7',
+    color: 'rgba(91, 63, 176, 0.12)', // Вторая УК — приглушённый фиолетовый
+    borderColor: '#5B3FB0',
     // Границы дворовой территории вокруг проспекта Победы, 102
     coordinates: [
       [

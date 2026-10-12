@@ -54,20 +54,20 @@ export function useIncidentTimer(incidentId: string, deadlineAt?: string, status
   }, [incidentId, deadlineAt, status, triggerKnmEscalation]);
 
    // ГЕНЕРАЦИЯ ПОДСКАЗОК НА ОСНОВЕ МАТРИЦЫ ИСТОЧНИКОВ И ПРИОРИТЕТОВ ДРТ
-  let slaLabel = 'Стандартный регламент благоустройства (SLA)';
+  let slaLabel = 'Стандартный срок благоустройства';
   if (selectedIncident?.source === 'DIRECT_ORDER') {
-    slaLabel = 'ВЫСШИЙ ПРИОРИТЕТ: Личное указание руководства (Срок 24ч)';
+    slaLabel = 'Высший приоритет: поручение руководства, 1 сутки';
   } else if (selectedIncident?.source === 'GOVERNOR_PORTAL') {
-    slaLabel = 'ВЫСОКИЙ ПРИОРИТЕТ: Портал губернатора (Срок 3 дня)';
+    slaLabel = 'Высокий приоритет: портал губернатора, 3 суток';
   } else if (selectedIncident?.source === 'DELO_WEB') {
-    slaLabel = 'ОФИЦИАЛЬНЫЙ КОНТУР: Дело-web (Норматив до 30 дней)';
+    slaLabel = 'Письмо через Дело-web: до 30 суток';
   } else if (selectedIncident?.media.boundingBoxes.some((box: any) => box.label.includes('ТКО') || box.label.includes('КГМ'))) {
-    slaLabel = 'МУСОРНЫЙ КОНТУР: Повышенный приоритет ТКО/КГМ';
+    slaLabel = 'Повышенный приоритет: ТКО и КГМ';
   }
 
   // Вспомогательная функция для превращения миллисекунд в красивую читаемую строку
   const formatTime = (ms: number): string => {
-    if (ms <= 0) return 'СРОК ИСТЕК';
+    if (ms <= 0) return 'Срок истёк';
 
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);

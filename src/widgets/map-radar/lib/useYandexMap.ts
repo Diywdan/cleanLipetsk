@@ -54,6 +54,7 @@ export function useYandexMap(
           },
         });
 
+        // Подложку приглушает CSS (.map-muted в index.css): маркеры — DOM, их фильтр не трогает
         map.addChild(new YMapDefaultSchemeLayer());
         map.addChild(new YMapDefaultFeaturesLayer());
 
