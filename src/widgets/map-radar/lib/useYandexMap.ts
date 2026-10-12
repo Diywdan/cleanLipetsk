@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef} from 'react';
 import type { RefObject } from 'react';
 import { loadYmaps3 } from './mapUtils'; // Импортируем твой асинхронный загрузчик
+import type { YMapInstance } from './ymapsTypes';
 import { LIPETSK_POLYGONS } from './lipetskPolygons';
+import { readThemeColors } from '@/shared/theme/themeColors';
 
 interface UseYandexMapResult {
   mapReady: boolean;
   error: string | null;
-  mapRef: RefObject<any | null>;
+  mapRef: RefObject<YMapInstance | null>;
 }
 
 /**
@@ -20,14 +22,12 @@ export function useYandexMap(
   const [error, setError] = useState<string | null>(null);
   
   // Храним сам инстанс карты в Ref, чтобы он не стирался и не вызывал ререндеры
-  const mapRef = useRef<any | null>(null);
+  const mapRef = useRef<YMapInstance | null>(null);
+
+  const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY;
 
   useEffect(() => {
-    const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY;
-    if (!apiKey) {
-      setError('Нет ключа VITE_YANDEX_MAPS_API_KEY в .env');
-      return;
-    }
+    if (!apiKey) return;
 
     // Флаг отмены для защиты от Race Conditions (когда компонент размонтировался до того, как ответил сервер)
     let cancelled = false;
@@ -49,11 +49,12 @@ export function useYandexMap(
         // Инициализируем нативный WebGL-холст Яндекса v3
         const map = new YMap(mapContainerRef.current, {
           location: {
-            center: [39.5532, 52.6145], // Липецк [lng, lat]
-            zoom: 13,
+            center: [39.598, 52.611], // Липецк [lng, lat]: весь город с левым берегом
+            zoom: 12.6,
           },
         });
 
+        // Подложку красит тема: CSS-фильтр .map-base canvas (styles/themes.css); маркеры — DOM, их фильтр не трогает
         map.addChild(new YMapDefaultSchemeLayer());
         map.addChild(new YMapDefaultFeaturesLayer());
 
@@ -66,7 +67,11 @@ export function useYandexMap(
         map.addChild(polygonsLayer);
 
         // 3. Рисуем каждый ведомственный полигон на карте Липецка
-        LIPETSK_POLYGONS.forEach((poly) => {
+        // Цвета зон — из темы (карта пересоздаётся при смене темы)
+        const theme = readThemeColors();
+        const zoneColors = [theme['zone-1'], theme['zone-2']];
+        LIPETSK_POLYGONS.forEach((poly, index) => {
+          const zone = zoneColors[index % zoneColors.length] || poly.borderColor;
           // Создаем нативный графический объект Яндекса
           const zoneFeature = new ymaps3.YMapFeature({
             id: poly.id,
@@ -75,9 +80,9 @@ export function useYandexMap(
               coordinates: poly.coordinates
             },
             style: {
-              fill: poly.color,         // Цвет заливки двора
+              fill: `${zone}24`, // заливка двора: цвет зоны + альфа 0x24 (≈14 %)
               stroke: [
-                { color: poly.borderColor, width: 2 } // Цвет и толщина границы забора
+                { color: zone, width: 1.5 } // граница зоны ответственности УК
               ]
             }
           });
@@ -115,7 +120,7 @@ export function useYandexMap(
         mapRef.current = null;
       }
     };
-  }, [mapContainerRef]); // Запускается строго один раз при привязке контейнера
+  }, [mapContainerRef, apiKey]); // Запускается строго один раз при привязке контейнера
 
-  return { mapReady, error, mapRef };
+  return { mapReady, error: apiKey ? error : 'Нет ключа VITE_YANDEX_MAPS_API_KEY в .env', mapRef };
 }

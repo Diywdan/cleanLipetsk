@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useIncidentStore } from '../model/incidentStore';
 
 interface UseIncidentTimerResult {
-  formattedTime: string; // Строка вида "23:59:45" или "СРОК ИСТЕК"
+  formattedTime: string; // Строка вида "23:59:45" или "Срок истёк"
+  msLeft: number;        // Сколько осталось, мс (0 — срок вышел)
   isExpired: boolean;    // Флаг просрочки для смены стилей UI
   slaLabel: string;
 }
@@ -14,60 +15,59 @@ interface UseIncidentTimerResult {
 export function useIncidentTimer(incidentId: string, deadlineAt?: string, status?: string): UseIncidentTimerResult {
   const triggerKnmEscalation = useIncidentStore((state) => state.triggerKnmEscalation);
   const selectedIncident = useIncidentStore((state) => state.selectedIncident);
-  const [timeLeft, setTimeLeft] = useState<number>(0);
+  // Если дедлайна нет или инцидент уже закрыт/эскалирован — таймер не нужен
+  const active = !!deadlineAt && status !== 'CLOSED' && status !== 'KNM_ESCALATION';
+  const deadlineMs = deadlineAt ? new Date(deadlineAt).getTime() : 0;
+  const [now, setNow] = useState<number>(() => Date.now());
 
   useEffect(() => {
-    // Если дедлайна нет или инцидент уже закрыт/эскалирован — таймер не нужен
-    if (!deadlineAt || status === 'CLOSED' || status === 'KNM_ESCALATION') {
-      setTimeLeft(0);
-      return;
-    }
+    if (!active) return;
 
-    const calculateTimeLeft = () => {
-      const difference = new Date(deadlineAt).getTime() - Date.now();
-      
-      // КРИТИЧЕСКИЙ СЦЕНАРИЙ: Таймер дошел до нуля, время вышло!
-      if (difference <= 0) {
-        setTimeLeft(0);
-        triggerKnmEscalation(incidentId); // Авто-перевод в надзорный контур ГЖИ Липецка
-        return true; // Возвращаем true, чтобы остановить интервал
+    let done = false;
+    const tick = () => {
+      if (done) return true;
+      const t = Date.now();
+      setNow(t);
+      // КРИТИЧЕСКИЙ СЦЕНАРИЙ: время вышло — авто-перевод в надзорный контур ГЖИ Липецка
+      if (deadlineMs - t <= 0) {
+        // На КНМ уходит только дело в работе; отчёт на проверке инспектор решает сам
+        if (status === 'IN_PROGRESS') triggerKnmEscalation(incidentId);
+        done = true; // первый тик и интервал не должны эскалировать дважды
+        return true;
       }
-
-      setTimeLeft(difference);
       return false;
     };
 
-    // Первичный расчет при монтировании инцидента в "Единое окно"
-    const isOver = calculateTimeLeft();
-    if (isOver) return;
-
-    // Запускаем ежесекундный тик таймера дедлайна
+    // Ежесекундный тик; первый — сразу, без ожидания
+    const first = setTimeout(tick, 0);
     const intervalId = setInterval(() => {
-      const isOverTick = calculateTimeLeft();
-      if (isOverTick) {
-        clearInterval(intervalId);
-      }
+      if (tick()) clearInterval(intervalId);
     }, 1000);
 
-    // Очистка интервала при переключении карточек или закрытии окон
-    return () => clearInterval(intervalId);
-  }, [incidentId, deadlineAt, status, triggerKnmEscalation]);
+    // Очистка при переключении карточек или закрытии окон
+    return () => {
+      clearTimeout(first);
+      clearInterval(intervalId);
+    };
+  }, [active, incidentId, deadlineMs, status, triggerKnmEscalation]);
+
+  const timeLeft = active ? Math.max(0, deadlineMs - now) : 0;
 
    // ГЕНЕРАЦИЯ ПОДСКАЗОК НА ОСНОВЕ МАТРИЦЫ ИСТОЧНИКОВ И ПРИОРИТЕТОВ ДРТ
-  let slaLabel = 'Стандартный регламент благоустройства (SLA)';
+  let slaLabel = 'Стандартный срок благоустройства';
   if (selectedIncident?.source === 'DIRECT_ORDER') {
-    slaLabel = 'ВЫСШИЙ ПРИОРИТЕТ: Личное указание руководства (Срок 24ч)';
+    slaLabel = 'Высший приоритет: поручение руководства, 1 сутки';
   } else if (selectedIncident?.source === 'GOVERNOR_PORTAL') {
-    slaLabel = 'ВЫСОКИЙ ПРИОРИТЕТ: Портал губернатора (Срок 3 дня)';
+    slaLabel = 'Высокий приоритет: портал губернатора, 3 суток';
   } else if (selectedIncident?.source === 'DELO_WEB') {
-    slaLabel = 'ОФИЦИАЛЬНЫЙ КОНТУР: Дело-web (Норматив до 30 дней)';
-  } else if (selectedIncident?.media.boundingBoxes.some((box: any) => box.label.includes('ТКО') || box.label.includes('КГМ'))) {
-    slaLabel = 'МУСОРНЫЙ КОНТУР: Повышенный приоритет ТКО/КГМ';
+    slaLabel = 'Письмо через Дело-web: до 30 суток';
+  } else if (selectedIncident?.media.boundingBoxes.some((box) => box.label.includes('ТКО') || box.label.includes('КГМ'))) {
+    slaLabel = 'Повышенный приоритет: ТКО и КГМ';
   }
 
   // Вспомогательная функция для превращения миллисекунд в красивую читаемую строку
   const formatTime = (ms: number): string => {
-    if (ms <= 0) return 'СРОК ИСТЕК';
+    if (ms <= 0) return 'Срок истёк';
 
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
@@ -82,6 +82,7 @@ export function useIncidentTimer(incidentId: string, deadlineAt?: string, status
 
   return {
     formattedTime: formatTime(timeLeft),
+    msLeft: timeLeft,
     isExpired: timeLeft <= 0 && !!deadlineAt && status !== 'CLOSED',
     slaLabel
   };

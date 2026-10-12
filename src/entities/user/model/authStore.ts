@@ -18,7 +18,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   // По умолчанию сразу авторизуем Инспектора ДРТ Липецка для удобства разработки MVP
   currentUser: {
     id: 'usr_001',
-    name: 'Алексей ДРТ',
+    name: 'Алексей Смирнов',
     role: 'INSPECTOR',
     department: 'DRT'
   },
@@ -31,9 +31,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
   // Функция мгновенной смены роли без перезагрузки страницы
   switchDevRole: (role, department = 'DRT', orgName) => set(() => {
     const devNames: Record<UserRole, string> = {
-      INSPECTOR: 'Григорий (Инспектор ДРТ)',
-      UK: 'Сергей (Мастер УК)',
-      ADMIN: 'Руководство (ЦУР Липецк)'
+      INSPECTOR: 'Григорий Петров',
+      UK: 'Сергей Козлов',
+      ADMIN: 'Ирина Волкова'
     };
 
     return {

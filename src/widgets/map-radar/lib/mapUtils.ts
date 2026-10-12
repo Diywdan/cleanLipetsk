@@ -1,8 +1,14 @@
-let ymapsLoadPromise: Promise<any> | null = null;
+import { STATUS_META } from "@/entities/incident/lib/presentation";
+import type { IncidentStatus } from "@/entities/incident/types";
 
-export function loadYmaps3(apiKey: string): Promise<any> {
-  if (window.ymaps3) {
-    return window.ymaps3.ready.then(() => window.ymaps3);
+import type { Ymaps3 } from "./ymapsTypes";
+
+let ymapsLoadPromise: Promise<Ymaps3> | null = null;
+
+export function loadYmaps3(apiKey: string): Promise<Ymaps3> {
+  const loaded = window.ymaps3;
+  if (loaded) {
+    return loaded.ready.then(() => loaded);
   }
 
   if (ymapsLoadPromise) return ymapsLoadPromise;
@@ -50,33 +56,37 @@ export function loadYmaps3(apiKey: string): Promise<any> {
   return ymapsLoadPromise;
 }
 
-export function statusColor(status: string): string {
-  const colors: Record<string, string> = {
-    NEW: "bg-blue-500 border-blue-200",
-    IN_PROGRESS: "bg-amber-500 border-amber-200",
-    VERIFICATION: "bg-purple-500 border-purple-200",
-    CLOSED: "bg-emerald-500 border-emerald-200",
-  };
-  return colors[status] || "bg-rose-600 border-rose-300 animate-pulse";
-}
-
+// Маркер обращения: светящаяся точка, у новых и КНМ — пульс.
 export function createMarkerElement(
-  status: string,
+  status: IncidentStatus,
   isSelected: boolean,
   onClick: () => void,
 ): HTMLDivElement {
   const el = document.createElement("div");
- // Собираем декларативные Tailwind v4 классы
-  const baseClasses = "w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-md cursor-pointer transition-all transform hover:scale-125 duration-200 -translate-x-1/2 -translate-y-1/2";
-  const selectedClasses = isSelected ? "ring-4 ring-offset-2 ring-blue-500 scale-110 z-50" : "z-10";
-  const statusColorClass = statusColor(status);
+  const color = STATUS_META[status]?.dot ?? "#5C6B7A";
+  const base = 14;
+  const size = isSelected ? base + 8 : base;
 
-  el.className = `${baseClasses} ${selectedClasses} ${statusColorClass}`;
+  const ring = isSelected
+    ? `border:2px solid #fff;box-shadow:0 0 0 4px color-mix(in srgb, ${color} 35%, transparent), 0 0 22px 4px ${color}`
+    : `border:1.5px solid color-mix(in srgb, ${color} 40%, #fff);box-shadow:0 0 14px 2px color-mix(in srgb, ${color} 70%, transparent)`;
 
-  const dot = document.createElement("div");
-  dot.style.cssText =
-    "width:6px;height:6px;border-radius:9999px;background:#fff;";
-  el.appendChild(dot);
+  el.style.cssText = [
+    `width:${size}px`,
+    `height:${size}px`,
+    "border-radius:9999px",
+    `background:${color}`,
+    `color:${color}`,
+    ring,
+    "transform:translate(-50%,-50%)",
+    "cursor:pointer",
+    `position:relative;z-index:${isSelected ? 50 : 10}`,
+    "transition:width .15s,height .15s,box-shadow .15s",
+  ].join(";");
+  if (status === "NEW" || status === "KNM_ESCALATION") {
+    el.classList.add("marker-pulse");
+  }
+  el.title = STATUS_META[status]?.label ?? "";
 
   el.onclick = (e) => {
     e.stopPropagation();

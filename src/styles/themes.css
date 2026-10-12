@@ -1,0 +1,185 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Токены «Диспетчерской» — ситуационного центра контроля площадок.
+   Два тона: тёмный (по умолчанию) и светлый — атрибут data-mode на <html>.
+   Компоненты красятся только через эти переменные (bg-card, text-danger,
+   var(--st-new)…). Селектор :root[data-mode] сильнее, чем .dark из shadcn.
+
+   Статусы: --st-x — точка/маркер/график, --st-x-bg — подложка тега,
+   --st-x-fg — текст тега (контраст к своей подложке ≥ 4.5).
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Тёмный тон: почти чёрный синий, стеклянные панели над картой, данные
+   светятся. Бирюза — «живое» и новое, малиновый — тревога. ─────────────── */
+:root,
+:root[data-mode="dark"] {
+  --background: #050A14;
+  --foreground: #E4ECF7;
+  --card: rgba(10, 18, 34, 0.78);
+  --card-foreground: #E4ECF7;
+  --popover: #0C1528;
+  --popover-foreground: #E4ECF7;
+  --primary: #38D3F2;
+  --primary-foreground: #031019;
+  --secondary: rgba(56, 211, 242, 0.12);
+  --secondary-foreground: #8BE6F8;
+  --muted: rgba(148, 178, 220, 0.06);
+  --muted-foreground: #8C9BB2;
+  --accent: rgba(148, 178, 220, 0.08);
+  --accent-foreground: #E4ECF7;
+  --destructive: #FF4F8B;
+  --border: rgba(148, 178, 220, 0.14);
+  --input: rgba(148, 178, 220, 0.22);
+  --ring: #38D3F2;
+  --radius: 0.75rem;
+
+  --ink: #02060D;
+  --danger: #FF6B9D;
+  --success: #4BE3A6;
+  --warning: #FFC46B;
+
+  --st-new: #38D3F2;   --st-new-bg: rgba(56, 211, 242, 0.14);  --st-new-fg: #8BE6F8;
+  --st-work: #FFB547;  --st-work-bg: rgba(255, 181, 71, 0.14); --st-work-fg: #FFCF85;
+  --st-check: #A78BFA; --st-check-bg: rgba(167, 139, 250, 0.16); --st-check-fg: #C9B8FD;
+  --st-knm: #FF3D7F;   --st-knm-bg: rgba(255, 61, 127, 0.16);  --st-knm-fg: #FF8DB3;
+  --st-done: #34D399;  --st-done-bg: rgba(52, 211, 153, 0.14); --st-done-fg: #7EE6BF;
+
+  --font-ui: 'Golos Text Variable', 'Segoe UI', Arial, sans-serif;
+  --font-num: 'JetBrains Mono Variable', Consolas, monospace;
+
+  --chart-1: #38D3F2;
+  --chart-2: #FF3D7F;
+  --chart-grid: rgba(148, 178, 220, 0.10);
+  --chart-axis: #8C9BB2;
+  --zone-1: #38D3F2;
+  --zone-2: #A78BFA;
+  /* Светлая схема Яндекса → тёмная ночная: инверсия, разворот оттенка, холодный тон */
+  --map-filter: invert(1) hue-rotate(180deg) grayscale(0.55) brightness(0.78) contrast(1.12) sepia(0.18) hue-rotate(175deg) saturate(1.6);
+  --panel-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  --inset: rgba(0, 0, 0, 0.25);
+  --hover: rgba(255, 255, 255, 0.04);
+  --chip-on: rgba(255, 255, 255, 0.10);
+  --chip-ring: rgba(255, 255, 255, 0.25);
+  --stage-glow: radial-gradient(1200px 600px at 70% -10%, rgba(56, 211, 242, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 0% 110%, rgba(167, 139, 250, 0.08), transparent 60%);
+  --vignette: inset 0 0 160px 40px rgba(5, 10, 20, 0.85);
+  --grid-line: rgba(56, 211, 242, 0.035);
+
+  --sidebar: #0A1222;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}
+
+/* ── Светлый тон: дневной ситуационный центр ──────────────────────────────
+   Та же раскладка для светлого зала и проектора: холодный светло-серый фон,
+   матовое белое стекло, бирюза темнее — чтобы читалась на белом. Свечение
+   заменено плотным цветом. */
+:root[data-mode="light"] {
+  --background: #E4EAF2;
+  --foreground: #0E1B2E;
+  --card: rgba(255, 255, 255, 0.80);
+  --card-foreground: #0E1B2E;
+  --popover: #FFFFFF;
+  --popover-foreground: #0E1B2E;
+  --primary: #0A7FA3;
+  --primary-foreground: #FFFFFF;
+  --secondary: rgba(10, 127, 163, 0.10);
+  --secondary-foreground: #076584;
+  --muted: rgba(16, 42, 84, 0.04);
+  --muted-foreground: #56677F;
+  --accent: rgba(16, 42, 84, 0.05);
+  --accent-foreground: #0E1B2E;
+  --destructive: #C8174F;
+  --border: rgba(16, 42, 84, 0.12);
+  --input: rgba(16, 42, 84, 0.18);
+  --ring: #0A7FA3;
+
+  --ink: #0E1B2E;
+  --danger: #C8174F;
+  --success: #0A7A52;
+  --warning: #8A5300;
+
+  --st-new: #0A84C2;   --st-new-bg: rgba(10, 132, 194, 0.11);  --st-new-fg: #075E8C;
+  --st-work: #E08E00;  --st-work-bg: rgba(224, 142, 0, 0.13);  --st-work-fg: #8A5300;
+  --st-check: #7553D6; --st-check-bg: rgba(117, 83, 214, 0.11); --st-check-fg: #5B3FB0;
+  --st-knm: #E0245E;   --st-knm-bg: rgba(224, 36, 94, 0.10);   --st-knm-fg: #B0164A;
+  --st-done: #12A170;  --st-done-bg: rgba(18, 161, 112, 0.11); --st-done-fg: #0A6B4A;
+
+  --chart-1: #0A84C2;
+  --chart-2: #E0245E;
+  --chart-grid: rgba(16, 42, 84, 0.08);
+  --chart-axis: #56677F;
+  --zone-1: #0A84C2;
+  --zone-2: #7553D6;
+  --map-filter: saturate(0.45) contrast(0.96) brightness(1.02);
+  --panel-shadow: 0 22px 44px -26px rgba(16, 42, 84, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+  --inset: rgba(16, 42, 84, 0.04);
+  --hover: rgba(16, 42, 84, 0.05);
+  --chip-on: #FFFFFF;
+  --chip-ring: rgba(16, 42, 84, 0.18);
+  --stage-glow: radial-gradient(1200px 600px at 70% -10%, rgba(10, 132, 194, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 0% 110%, rgba(117, 83, 214, 0.07), transparent 60%);
+  --vignette: inset 0 0 140px 24px rgba(228, 234, 242, 0.80);
+  --grid-line: rgba(10, 84, 140, 0.05);
+  --sidebar: #F4F7FB;
+}
+/* На светлом фоне свечение цифр мутнит текст — убираем его */
+:root[data-mode="light"] [style*="text-shadow"] {
+  text-shadow: none !important;
+}
+
+/* ── Общие вещи ─────────────────────────────────────────────────────────── */
+.map-base canvas,
+.map-base img {
+  filter: var(--map-filter);
+}
+
+.font-num { font-family: var(--font-num); font-variant-numeric: tabular-nums lining-nums; }
+
+/* Стекло диспетчерской: размытие подложки и тонкий блик сверху */
+.glass {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--panel-shadow);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+}
+
+/* Мелкая надпись капителью — подписи разделов */
+.eyebrow {
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+/* Пульс вокруг новых и переданных на КНМ маркеров */
+@keyframes marker-pulse {
+  0%   { transform: scale(1);   opacity: 0.55; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.marker-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: marker-pulse 2.2s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marker-pulse::after { animation: none; }
+}
+
+/* Тонкая полоса прокрутки в тёмных темах */
+:root.dark * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 178, 220, 0.22) transparent;
+}

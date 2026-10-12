@@ -7,60 +7,54 @@ interface ImageCompareSliderProps {
   className?: string;
 }
 
+// Координата указателя → проценты ширины контейнера (0–100)
+function toPercent(el: HTMLElement | null, clientX: number): number | null {
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  return Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+}
+
 export const ImageCompareSlider: React.FC<ImageCompareSliderProps> = ({
   beforeUrl,
   afterUrl,
   className = '',
 }) => {
-  // Положение шторки в процентах (от 0 до 100). По умолчанию — ровно по центру (50%)
+  // Положение шторки в процентах. По умолчанию — ровно по центру (50%)
   const [sliderPosition, setSliderPosition] = useState<number>(50);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Функция для расчета процента смещения ползунка относительно контейнера
-  const handleMove = (clientX: number) => {
-    if (!containerRef.current) return;
-    
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = clientX - rect.left; // Пиксели от левого края контейнера
-    
-    // Переводим в проценты и жестко ограничиваем рамками от 0% до 100%
-    let position = (x / rect.width) * 100;
-    if (position < 0) position = 0;
-    if (position > 100) position = 100;
-    
-    setSliderPosition(position);
-  };
-
-  // Обработчики для мыши
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging) return;
-    handleMove(e.clientX);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const moveTo = (clientX: number) => {
+    const p = toPercent(containerRef.current, clientX);
+    if (p !== null) setSliderPosition(p);
   };
 
   // Глобальные слушатели мыши, чтобы ползунок не «срывался», если вести мышь быстро вне картинки
   useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
+    if (!isDragging) return;
+    const onMove = (e: MouseEvent) => {
+      const p = toPercent(containerRef.current, e.clientX);
+      if (p !== null) setSliderPosition(p);
+    };
+    const onUp = () => setIsDragging(false);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
     };
   }, [isDragging]);
 
   return (
     <div
       ref={containerRef}
-      className={`relative select-none overflow-hidden rounded-lg bg-slate-900 w-full aspect-video md:min-h-75 border border-slate-200 shadow-inner ${className}`}
-      onMouseDown={() => setIsDragging(true)}
+      className={`relative select-none overflow-hidden rounded-md bg-ink w-full aspect-video ${className}`}
+      onMouseDown={(e) => {
+        moveTo(e.clientX);
+        setIsDragging(true);
+      }}
       onTouchMove={(e) => {
-        if (e.touches.length > 0) handleMove(e.touches[0].clientX);
+        if (e.touches.length > 0) moveTo(e.touches[0].clientX);
       }}
     >
       {/* ИЗОБРАЖЕНИЕ «СТАЛО» (Основа/Задний план) */}
@@ -73,31 +67,23 @@ export const ImageCompareSlider: React.FC<ImageCompareSliderProps> = ({
         className="absolute inset-0 overflow-hidden pointer-events-none z-20"
         style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}
       >
-        <div className="absolute bottom-3 right-3 whitespace-nowrap bg-emerald-600/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded backdrop-blur-xs">
-          Результат (Стало)
+        <div className="absolute bottom-3 right-3 whitespace-nowrap rounded bg-[#0A6B34] px-2 py-0.5 text-[12px] text-white">
+          Стало
         </div>
       </div>
 
-      {/* ИЗОБРАЖЕНИЕ «БЫЛО» (Верхний слой, обрезаемый по ширине) */}
+      {/* ИЗОБРАЖЕНИЕ «БЫЛО»: во всю ширину, обрезается маской — картинка не сжимается вслед за шторкой */}
       <div
-        className="absolute inset-y-0 left-0 overflow-hidden pointer-events-none z-10"
-        style={{ width: `${sliderPosition}%` }}
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
       >
-        {/* Нам нужно жестко зафиксировать ширину внутренней картинки, чтобы она не сжималась вслед за контейнером */}
-        <div className="absolute inset-y-0 left-0 w-full h-full" style={{ width: containerRef.current?.getBoundingClientRect().width || '100%' }}>
-          <img
-            src={beforeUrl}
-            alt="Фиксация нарушения ИИ"
-            className="w-full h-full object-cover pointer-events-none"
-            style={{ width: containerRef.current?.getBoundingClientRect().width || '100%', height: '100%' }}
-          />
-        </div>
-        <div className="absolute top-3 left-3 whitespace-nowrap bg-blue-600/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded backdrop-blur-xs z-20">
-          Фиксация (Было)
+        <img src={beforeUrl} alt="Фиксация нарушения ИИ" className="w-full h-full object-cover" />
+        <div className="absolute top-3 left-3 z-20 whitespace-nowrap rounded bg-ink/85 px-2 py-0.5 text-[12px] text-white">
+          Было
         </div>
       </div>
 
-      {/* ЛИНИЯ РАЗДЕЛА И ПОЛЗУНОК (ПОЛЗУНОК) */}
+      {/* ЛИНИЯ РАЗДЕЛА И ПОЛЗУНОК */}
       <div
         className="absolute inset-y-0 w-0.5 bg-white cursor-ew-resize z-30 shadow-lg flex items-center justify-center group"
         style={{ left: `${sliderPosition}%` }}
