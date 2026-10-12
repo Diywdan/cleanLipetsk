@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuthStore } from '@/entities/user/model/authStore';
 import type { UserRole } from '@/entities/user/types';
-import { THEMES, useStandStore, type DatasetId } from '@/shared/theme/standStore';
+import { MODE_THEMES, THEMES, useStandStore, type DatasetId, type ModeId } from '@/shared/theme/standStore';
 
 // Полоса демонстрационного стенда — одна на все темы.
 // Переключает направление дизайна, набор данных и роль без входа в систему.
@@ -9,6 +9,11 @@ const ROLES: { role: UserRole; title: string }[] = [
   { role: 'INSPECTOR', title: 'Инспектор' },
   { role: 'UK', title: 'Мастер УК' },
   { role: 'ADMIN', title: 'Руководство' },
+];
+
+const MODES: { id: ModeId; title: string }[] = [
+  { id: 'dark', title: 'Тёмная' },
+  { id: 'light', title: 'Светлая' },
 ];
 
 const DATASETS: { id: DatasetId; title: string }[] = [
@@ -23,7 +28,7 @@ const Segmented: React.FC<{
   onChange: (id: string) => void;
 }> = ({ label, items, value, onChange }) => (
   <div className="flex min-w-0 items-center gap-2">
-    <span className="hidden text-white/55 lg:inline">{label}</span>
+    <span className="hidden text-white/55 2xl:inline">{label}</span>
     {/* Узкий экран — выпадающий список, широкий — переключатель */}
     <select
       value={value}
@@ -56,7 +61,7 @@ const Segmented: React.FC<{
 );
 
 export const StandBar: React.FC = () => {
-  const { theme, setTheme, dataset, setDataset } = useStandStore();
+  const { theme, setTheme, dataset, setDataset, mode, setMode } = useStandStore();
   const { currentUser, switchDevRole } = useAuthStore();
 
   const setRole = (role: string) => {
@@ -71,11 +76,16 @@ export const StandBar: React.FC = () => {
     >
       <span className="flex items-center gap-2">
         <span className="size-1.5 rounded-full bg-[#F5B83D]" />
-        <span className="hidden sm:inline">Демонстрационный стенд · данные условные</span>
+        <span className="hidden 2xl:inline">Демонстрационный стенд · данные условные</span>
+        <span className="hidden sm:inline 2xl:hidden">Стенд · данные условные</span>
         <span className="hidden min-[420px]:inline sm:hidden">Стенд</span>
       </span>
       <div className="ml-auto flex min-w-0 items-center gap-x-2 md:flex-wrap md:gap-x-5 md:gap-y-1.5">
         <Segmented label="Дизайн" items={THEMES} value={theme} onChange={(id) => setTheme(id as typeof theme)} />
+        {/* Тон есть только у тёмных по замыслу тем */}
+        {MODE_THEMES.includes(theme) && (
+          <Segmented label="Тон" items={MODES} value={mode} onChange={(id) => setMode(id as ModeId)} />
+        )}
         <div className="hidden sm:block">
           <Segmented label="Данные" items={DATASETS} value={dataset} onChange={(id) => setDataset(id as DatasetId)} />
         </div>

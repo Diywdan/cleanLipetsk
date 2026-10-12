@@ -9,7 +9,7 @@ import { AiToggle, CardActions, HistoryList, KpValue, PhotoEvidence, Responsible
 // «Диспетчерская»: карточка — стеклянная панель над картой.
 // Вверху светится полоса цвета стадии, цифры моноширинные, фото в видоискателе.
 const Fact: React.FC<{ label: string; children: React.ReactNode; alarm?: boolean }> = ({ label, children, alarm }) => (
-  <div className="rounded-lg border border-border bg-black/20 px-3 py-2.5">
+  <div className="rounded-lg border border-border bg-[var(--inset)] px-3 py-2.5">
     <div className="eyebrow">{label}</div>
     <div className={`mt-1 text-[13.5px] ${alarm ? 'text-danger' : 'text-foreground'}`}>{children}</div>
   </div>
@@ -47,7 +47,7 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
           <button
             type="button"
             onClick={m.close}
-            className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+            className="grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--hover)] hover:text-foreground"
             aria-label="Закрыть карточку"
           >
             <X className="size-4" />
@@ -92,7 +92,7 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
         </Section>
       </div>
 
-      <footer className="shrink-0 border-t border-border bg-black/25 px-5 py-4">
+      <footer className="shrink-0 border-t border-border bg-[var(--inset)] px-5 py-4">
         <CardActions incident={inc} role={role} variant="dispatch" h={m.handlers} />
       </footer>
     </article>

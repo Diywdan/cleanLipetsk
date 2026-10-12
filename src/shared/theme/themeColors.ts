@@ -8,7 +8,7 @@ export function readCssVar(name: string): string {
 }
 
 const NAMES = [
-  'background', 'foreground', 'card', 'muted', 'muted-foreground', 'border', 'primary',
+  'background', 'foreground', 'card', 'popover', 'accent', 'muted', 'muted-foreground', 'border', 'primary',
   'st-new', 'st-work', 'st-check', 'st-knm', 'st-done',
   'chart-grid', 'chart-axis', 'chart-1', 'chart-2', 'zone-1', 'zone-2',
 ] as const;
@@ -23,7 +23,8 @@ export function readThemeColors(): ThemeColors {
 
 export function useThemeColors(): ThemeColors {
   const theme = useStandStore((s) => s.theme);
-  // theme нужен как ключ пересчёта: значения читаются из DOM
+  const mode = useStandStore((s) => s.mode);
+  // theme и mode нужны как ключ пересчёта: значения читаются из DOM
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => readThemeColors(), [theme]);
+  return useMemo(() => readThemeColors(), [theme, mode]);
 }

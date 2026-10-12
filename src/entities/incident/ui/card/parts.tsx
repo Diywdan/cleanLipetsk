@@ -159,7 +159,7 @@ export const ResponsiblesList: React.FC<{ incident: IIncident; variant: CardVari
 
   const rowCls: Record<CardVariant, string> = {
     gos: 'divide-y divide-border rounded-md border border-border',
-    dispatch: 'divide-y divide-border rounded-lg border border-border bg-black/20',
+    dispatch: 'divide-y divide-border rounded-lg border border-border bg-[var(--inset)]',
     pro: 'divide-y divide-border rounded-md border border-border',
     dossier: '',
   };
@@ -225,7 +225,7 @@ export const HistoryList: React.FC<{ history?: IHistoryEvent[]; variant: CardVar
         <li key={e.id} className="relative pl-6">
           <span
             className={`absolute -left-3 top-0 grid size-6 place-items-center rounded-full border border-border text-muted-foreground ${
-              variant === 'dispatch' ? 'bg-[#0A1426] text-primary' : 'bg-card'
+              variant === 'dispatch' ? 'bg-popover text-primary' : 'bg-card'
             }`}
             title={AUTHOR[e.type].title}
           >
@@ -274,7 +274,7 @@ export const SlaMeter: React.FC<{
   }
 
   return (
-    <div className={`rounded-lg px-4 py-3 ${variant === 'dispatch' ? 'bg-black/25 ring-1 ring-border' : 'bg-muted'}`}>
+    <div className={`rounded-lg px-4 py-3 ${variant === 'dispatch' ? 'bg-[var(--inset)] ring-1 ring-border' : 'bg-muted'}`}>
       <div className="flex items-end justify-between gap-4">
         <div>
           <div className={variant === 'dispatch' ? 'eyebrow' : 'text-[12.5px] text-muted-foreground'}>До окончания срока</div>
@@ -324,7 +324,7 @@ export const CardActions: React.FC<{
       : variant === 'dossier'
         ? `${btn} font-medium tracking-wide hover:bg-primary/90`
         : `${btn} hover:bg-primary/90`;
-  const secondary = `${btn} ${variant === 'dispatch' ? 'bg-transparent hover:bg-white/5' : ''}`;
+  const secondary = `${btn} ${variant === 'dispatch' ? 'bg-transparent hover:bg-[var(--hover)]' : ''}`;
   const note = (tone: 'ok' | 'bad', text: string) => (
     <p
       className={`m-0 flex items-start gap-2 rounded-md px-3 py-2.5 text-[14px] ${
@@ -368,7 +368,7 @@ export const CardActions: React.FC<{
             </div>
           </div>
         )}
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.3fr]">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr]">
           <Button variant="outline" onClick={() => h.rejectIncident(id)} className={`${secondary} text-danger`}>
             Ложное срабатывание
           </Button>

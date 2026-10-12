@@ -81,8 +81,8 @@ export function createMarkerElement(
       ? "border:2.5px solid #FBF8F1;box-shadow:0 0 0 2px var(--foreground), 0 3px 8px rgba(60,45,20,.35)"
       : "border:2px solid #FBF8F1;box-shadow:0 1px 3px rgba(60,45,20,.4)",
     pro: isSelected
-      ? "border:2px solid #0A0B0D;box-shadow:0 0 0 2px var(--primary), 0 4px 12px rgba(0,0,0,.6)"
-      : "border:2px solid #0A0B0D;box-shadow:0 0 0 1px rgba(255,255,255,.25)",
+      ? "border:2px solid var(--background);box-shadow:0 0 0 2px var(--primary), 0 4px 12px rgba(0,0,0,.35)"
+      : "border:2px solid var(--background);box-shadow:0 0 0 1px var(--border)",
   };
 
   el.style.cssText = [

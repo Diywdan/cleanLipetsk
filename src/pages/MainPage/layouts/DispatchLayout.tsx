@@ -71,7 +71,7 @@ const TopBar: React.FC<{ tab: AppTab; onTab: (t: AppTab) => void }> = ({ tab, on
           <div className="text-[15px] font-semibold text-foreground">Ситуационный центр</div>
         </div>
       </div>
-      <nav className="flex rounded-full bg-black/30 p-1 ring-1 ring-border" aria-label="Разделы">
+      <nav className="flex rounded-full bg-[var(--inset)] p-1 ring-1 ring-border" aria-label="Разделы">
         {([
           ['map_view', 'Обстановка'],
           ['analytics', 'Аналитика'],
@@ -112,7 +112,7 @@ const TopBar: React.FC<{ tab: AppTab; onTab: (t: AppTab) => void }> = ({ tab, on
 /* ── Обстановка: четыре числа и поступление за две недели ──────────────── */
 
 const Kpi: React.FC<{ label: string; value: number; sub?: string; color?: string }> = ({ label, value, sub, color }) => (
-  <div className="rounded-xl border border-border bg-black/25 px-3 py-2.5">
+  <div className="rounded-xl border border-border bg-[var(--inset)] px-3 py-2.5">
     <div className="eyebrow !text-[10px]">{label}</div>
     <div
       className="font-num mt-1 text-[30px] font-medium leading-none"
@@ -172,7 +172,7 @@ const FeedRow: React.FC<{ incident: IIncident; now: number; selected: boolean; o
         onClick={onSelect}
         aria-current={selected || undefined}
         className={`group relative flex w-full cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
-          selected ? 'bg-primary/10 ring-1 ring-primary/40' : 'hover:bg-white/[0.04]'
+          selected ? 'bg-primary/10 ring-1 ring-primary/40' : 'hover:bg-[var(--hover)]'
         }`}
       >
         <span
@@ -227,7 +227,7 @@ const LeftPanel: React.FC = () => {
       onClick={() => set({ status: id })}
       aria-pressed={status === id}
       className={`flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] transition-colors ${
-        status === id ? 'bg-white/10 text-foreground ring-1 ring-white/25' : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+        status === id ? 'bg-[var(--chip-on)] text-foreground ring-1 ring-[var(--chip-ring)]' : 'text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground'
       }`}
     >
       {id !== 'all' && <StatusIcon status={id} size={12} />}
@@ -266,7 +266,7 @@ const LeftPanel: React.FC = () => {
             onChange={(e) => set({ query: e.target.value })}
             placeholder="Улица или дом"
             aria-label="Поиск по адресу"
-            className="h-8 w-full rounded-lg border border-border bg-black/30 pl-8 pr-8 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            className="h-8 w-full rounded-lg border border-border bg-[var(--inset)] pl-8 pr-8 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
           />
           {query && (
             <button type="button" onClick={() => set({ query: '' })} className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground" aria-label="Очистить поиск">
@@ -323,7 +323,7 @@ const AttentionPanel: React.FC = () => {
                     <span className="text-danger">{f.knm}</span>
                   </span>
                 </div>
-                <div className="mt-1 flex h-1 overflow-hidden rounded-full bg-white/5">
+                <div className="mt-1 flex h-1 overflow-hidden rounded-full bg-[var(--inset)]">
                   <div style={{ width: `${(f.overdue / max) * 100}%`, background: 'var(--st-work)' }} />
                   <div style={{ width: `${(f.knm / max) * 100}%`, background: 'var(--st-knm)', boxShadow: '0 0 8px var(--st-knm)' }} />
                 </div>
@@ -350,7 +350,7 @@ const AttentionPanel: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => selectIncident(r.id)}
-                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-white/[0.04]"
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-[var(--hover)]"
                 >
                   <StatusIcon status={r.status} size={12} />
                   <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">{r.address}</span>
@@ -381,7 +381,7 @@ export const DispatchLayout: React.FC = () => {
   return (
     <div className="relative h-full overflow-y-auto lg:overflow-hidden">
       {/* Фон: глубина и холодное свечение по краям */}
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(1200px_600px_at_70%_-10%,rgba(56,211,242,0.10),transparent_60%),radial-gradient(900px_500px_at_0%_110%,rgba(167,139,250,0.08),transparent_60%)]" />
+      <div className="pointer-events-none fixed inset-0 [background:var(--stage-glow)]" />
 
       <div className="relative z-20 p-3 lg:pointer-events-none lg:absolute lg:inset-x-4 lg:top-4 lg:p-0">
         <TopBar tab={tab} onTab={setTab} />
@@ -398,8 +398,8 @@ export const DispatchLayout: React.FC = () => {
           <div className="relative mx-3 h-[52vh] overflow-hidden rounded-2xl ring-1 ring-border lg:absolute lg:inset-0 lg:mx-0 lg:h-auto lg:rounded-none lg:ring-0">
             <MapRadar chrome={false} className="h-full w-full" />
             {/* Виньетка: края карты уходят в фон, панели читаются */}
-            <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_160px_40px_rgba(5,10,20,0.85)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(56,211,242,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(56,211,242,0.035)_1px,transparent_1px)] bg-[size:48px_48px]" />
+            <div className="pointer-events-none absolute inset-0 shadow-[var(--vignette)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(var(--grid-line)_1px,transparent_1px),linear-gradient(90deg,var(--grid-line)_1px,transparent_1px)] bg-[size:48px_48px]" />
           </div>
 
           <div className="relative z-10 flex flex-col gap-3 p-3 lg:pointer-events-none lg:absolute lg:inset-x-4 lg:bottom-12 lg:top-[84px] lg:flex-row lg:items-stretch lg:justify-between lg:p-0">

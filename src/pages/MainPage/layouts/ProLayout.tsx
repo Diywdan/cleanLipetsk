@@ -91,7 +91,7 @@ const Sidebar: React.FC<{ view: View; setView: (v: View) => void; onSearch: () =
   };
 
   return (
-    <aside className="hidden w-[232px] shrink-0 flex-col border-r border-border bg-[#0D0E10] lg:flex">
+    <aside className="hidden w-[232px] shrink-0 flex-col border-r border-border bg-[var(--sidebar)] lg:flex">
       <div className="flex h-12 items-center gap-2.5 px-3">
         <span className="grid size-[22px] place-items-center rounded-[5px] bg-primary text-[10px] font-bold text-primary-foreground">ЧЛ</span>
         <span className="text-[13.5px] font-semibold text-foreground">Чистый Липецк</span>
@@ -162,7 +162,7 @@ const Row: React.FC<{ incident: IIncident; selected: boolean; now: number; onSel
       onClick={onSelect}
       aria-selected={selected}
       className={`group flex h-10 cursor-pointer items-center gap-3 border-b border-border/60 px-4 text-[13px] transition-colors lg:px-5 ${
-        selected ? 'bg-primary/[0.09] shadow-[inset_2px_0_0_var(--primary)]' : 'hover:bg-white/[0.025]'
+        selected ? 'bg-primary/[0.09] shadow-[inset_2px_0_0_var(--primary)]' : 'hover:bg-[var(--hover)]'
       }`}
     >
       <Priority level={incident.priority} />
@@ -339,7 +339,7 @@ export const ProLayout: React.FC = () => {
                 )}
                 {groups.map((g) => (
                   <section key={g.status}>
-                    <h3 className="sticky top-0 z-10 m-0 flex h-9 items-center gap-2 border-b border-border bg-[#131417] px-4 text-[12.5px] font-medium text-foreground lg:px-5">
+                    <h3 className="sticky top-0 z-10 m-0 flex h-9 items-center gap-2 border-b border-border bg-[var(--group-bg)] px-4 text-[12.5px] font-medium text-foreground lg:px-5">
                       <StatusIcon status={g.status} />
                       {STATUS_META[g.status].label}
                       <span className="font-num font-normal text-muted-foreground">{g.items.length}</span>

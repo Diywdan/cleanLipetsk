@@ -111,14 +111,14 @@ export const DashboardPage: React.FC = () => {
   const axis = { stroke: c['chart-axis'], fontSize: 12, tickLine: false, axisLine: false, fontFamily: num } as const;
   const tooltip = {
     contentStyle: {
-      background: v === 'dispatch' ? 'rgba(10,18,34,0.95)' : c.card,
+      background: v === 'dispatch' ? c.popover : c.card,
       border: `1px solid ${c.border}`,
       borderRadius: v === 'dossier' ? 0 : 8,
       fontSize: 12.5,
       color: c.foreground,
     },
     labelStyle: { color: c['muted-foreground'] },
-    cursor: { fill: v === 'dispatch' || v === 'pro' ? 'rgba(255,255,255,0.04)' : c.muted },
+    cursor: { fill: v === 'dispatch' || v === 'pro' ? c.accent : c.muted },
   };
   const radius = v === 'dossier' ? 0 : 3;
 

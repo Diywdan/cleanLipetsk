@@ -12,6 +12,7 @@ import { ProLayout } from "./layouts/ProLayout";
 // на весь экран, у «Досье» — газетная полоса, у «Профинструмента» — список с боковым меню.
 export const MainPage: React.FC = () => {
   const theme = useStandStore((s) => s.theme);
+  const mode = useStandStore((s) => s.mode);
   const selectIncident = useIncidentStore((s) => s.selectIncident);
 
   // Esc закрывает дело во всех темах; у «Профинструмента» своя клавиатура
@@ -27,7 +28,8 @@ export const MainPage: React.FC = () => {
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden bg-background text-foreground" style={{ fontFamily: "var(--font-ui)" }}>
       <StandBar />
-      <div className="relative min-h-0 flex-1">
+      {/* key: при смене тона раскладка и карта пересоздаются с цветами новой палитры */}
+      <div key={`${theme}-${mode}`} className="relative min-h-0 flex-1">
         {theme === "dispatch" && <DispatchLayout />}
         {theme === "dossier" && <DossierLayout />}
         {theme === "pro" && <ProLayout />}
