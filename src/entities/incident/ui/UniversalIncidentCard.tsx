@@ -187,9 +187,9 @@ export const UniversalIncidentCard: React.FC<TProps> = ({ userRole}) => {
                       {responsibles.map((r) => (
                         <li
                           key={`${r.role}-${r.organization.id}`}
-                          className="flex flex-wrap items-baseline gap-x-2"
+                          className="flex flex-wrap items-baseline gap-x-2 leading-tight"
                         >
-                          <span className="text-xs text-slate-500 w-44 shrink-0">
+                          <span className="block w-full text-[11px] text-slate-500">
                             {RESPONSIBLE_ROLE_TITLE[r.role]}
                           </span>
                           <span className="font-semibold text-slate-700">
