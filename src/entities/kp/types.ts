@@ -1,7 +1,7 @@
 import type { IGeoLocation, IResponsible } from '@/entities/incident/types';
 
 // Карточка контейнерной площадки (КП) из справочника.
-// Источник истины по реестру ещё не выбран (CRM или сервис справочника КП) —
+// Источник истины по реестру — CRM (другие системы получают его через Data Gateway);
 // интерфейс берёт карточки через kpApi, а не напрямую из данных.
 
 export type KpDataSource = 'FGIS_UTKO' | 'FIELD_CHECK' | 'MANUAL';
