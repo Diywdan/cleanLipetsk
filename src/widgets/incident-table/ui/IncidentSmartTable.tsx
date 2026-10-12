@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
 import { getStatusBadge } from '@/entities/incident/lib/cardUtils'; // Твоя утилита бейджей!
+import { getPrimaryOrganizationName, getRecidivismCount } from '@/entities/incident/lib/responsibles';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -39,7 +40,9 @@ export const IncidentSmartTable: React.FC = () => {
     const matchesSearch = incident.location.address.toLowerCase().includes(searchQuery.toLowerCase());
     
     // 2. Проверка по названию ответственной УК
-    const matchesUk = incident.responsible.organizationName.toLowerCase().includes(searchUk.toLowerCase());
+    const matchesUk = incident.responsibles.some((r) =>
+      r.organization.name.toLowerCase().includes(searchUk.toLowerCase())
+    );
     
     // 3. Проверка по 19 Управам Липецка
     const matchesUprava = selectedUprava === 'all' || incident.location.upravaId === Number(selectedUprava);
@@ -217,17 +220,17 @@ export const IncidentSmartTable: React.FC = () => {
                     
                     {/* Ответственная организация */}
                     <TableCell className="text-xs text-slate-600 font-medium">
-                      {incident.responsible.organizationName}
+                      {getPrimaryOrganizationName(incident)}
                     </TableCell>
                     
                     {/* Метрика рецидивов */}
                     <TableCell className="text-xs font-medium">
                       <span className={`px-2 py-0.5 rounded-sm text-[10px] font-bold ${
-                        incident.responsible.recidivismCount > 2 
+                        getRecidivismCount(incident) > 2 
                           ? 'bg-rose-50 text-rose-600 border border-rose-100' 
                           : 'bg-slate-100 text-slate-600'
                       }`}>
-                        {incident.responsible.recidivismCount}-й инцидент
+                        {getRecidivismCount(incident)}-й инцидент
                       </span>
                     </TableCell>
                     

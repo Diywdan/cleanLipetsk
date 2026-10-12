@@ -1,5 +1,6 @@
 import React from 'react';
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
+import { getPrimaryOrganizationName, getRecidivismCount } from '@/entities/incident/lib/responsibles';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ShieldAlert, TrendingUp, CheckCircle, BarChart3 } from 'lucide-react';
 
@@ -10,12 +11,12 @@ export const DashboardPage: React.FC = () => {
   const ukStatsMap: Record<string, { name: string; total: number; recidivism: number }> = {};
 
   incidents.forEach((inc) => {
-    const ukName = inc.responsible.organizationName;
+    const ukName = getPrimaryOrganizationName(inc);
     if (!ukStatsMap[ukName]) {
       ukStatsMap[ukName] = { name: ukName, total: 0, recidivism: 0 };
     }
     ukStatsMap[ukName].total += 1;
-    ukStatsMap[ukName].recidivism += inc.responsible.recidivismCount > 1 ? 1 : 0;
+    ukStatsMap[ukName].recidivism += getRecidivismCount(inc) > 1 ? 1 : 0;
   });
 
   const chartData = Object.values(ukStatsMap);
@@ -61,7 +62,7 @@ export const DashboardPage: React.FC = () => {
           <div>
             <span className="block text-xs text-slate-400 font-bold uppercase">Критические рецидивы УК</span>
             <span className="text-2xl font-black text-rose-600">
-              {incidents.filter(i => i.responsible.recidivismCount > 2).length}
+              {incidents.filter(i => getRecidivismCount(i) > 2).length}
             </span>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import type { IIncident } from '../types';
+import { getPrimaryResponsible, getRecidivismCount } from './responsibles';
 
 /**
  * Вспомогательная функция для асинхронного скачивания локального шрифта и конвертации в Base64
@@ -28,6 +29,10 @@ const fetchLocalFontAsBase64 = async (url: string): Promise<string> => {
 
 export const generateKnmAct = async (incident: IIncident) => {
   const currentDate = new Date().toLocaleDateString('ru-RU');
+  const primary = getPrimaryResponsible(incident);
+  const orgName = primary?.organization.name ?? 'не определена';
+  const directorName = primary?.organization.directorName ?? 'не указан';
+  const recidivism = getRecidivismCount(incident);
 
   try {
     const localFontUrl = '/fonts/PT-Sans-Regular.ttf';
@@ -81,9 +86,9 @@ export const generateKnmAct = async (incident: IIncident) => {
     actDoc.setFontSize(11);
     actDoc.text('СВЕДЕНИЯ ОБ ОТВЕТСТВЕННОМ ЛИЦЕ:', 20, y); y += 6;
     actDoc.setFontSize(10);
-    actDoc.text(`Управляющая организация (Балансодержатель): ${incident.responsible.organizationName}`, 20, y); y += 6;
-    actDoc.text(`Ответственный руководитель: ${incident.responsible.directorName}`, 20, y); y += 6;
-    actDoc.text(`Статистика повторности (Рецидивов) по адресу: ${incident.responsible.recidivismCount}-й случай за месяц.`, 20, y); y += 12;
+    actDoc.text(`Управляющая организация (Балансодержатель): ${orgName}`, 20, y); y += 6;
+    actDoc.text(`Ответственный руководитель: ${directorName}`, 20, y); y += 6;
+    actDoc.text(`Статистика повторности (Рецидивов) по адресу: ${recidivism}-й случай за месяц.`, 20, y); y += 12;
 
     actDoc.text('ЗАКЛЮЧЕНИЕ И НАДЗОРНЫЙ КОНТУР:', 20, y); y += 6;
     const splitConclusion = actDoc.splitTextToSize('Учитывая, что Управляющая компания просрочила регламентные сроки SLA оперативного реагирования и на момент истечения таймера не предоставила фотоотчет, материалы дела направляются в ГЖИ для возбуждения административного производства.', 160);
@@ -114,7 +119,7 @@ export const generateKnmAct = async (incident: IIncident) => {
     orderDoc.text(`ОФИЦИАЛЬНОЕ ПРЕДПИСАНИЕ № П-SLA-${incident.id}`, 105, 35, { align: 'center' });
     
     orderDoc.setFontSize(10);
-    orderDoc.text(`Кому: Руководству ${incident.responsible.organizationName} (${incident.responsible.directorName})`, 20, 45);
+    orderDoc.text(`Кому: Руководству ${orgName} (${directorName})`, 20, 45);
     orderDoc.text(`От кого: Руководитель Территориальной Управы Округа №${incident.location.upravaId || '3'}`, 20, 51);
     orderDoc.line(20, 55, 190, 55);
 
@@ -130,7 +135,7 @@ export const generateKnmAct = async (incident: IIncident) => {
     // Выделяем адрес жирным визуальным отступом
     orderDoc.text(`👉 ЦЕЛЕВОЙ АДРЕС: г. Липецк, ${incident.location.address}`, 25, y2); y2 += 8;
     
-    orderDoc.text(`Внимание: по данному участку зафиксирован ${incident.responsible.recidivismCount}-й случай повторного рецидива за текущий месяц.`, 20, y2); y2 += 8;
+    orderDoc.text(`Внимание: по данному участку зафиксирован ${recidivism}-й случай повторного рецидива за текущий месяц.`, 20, y2); y2 += 8;
     
     const splitWarning = orderDoc.splitTextToSize('В случае невыполнения настоящего законного требования в установленный регламентом срок, материалы дела будут автоматически переданы в Государственную жилищную инспекцию (ГЖИ) Липецкой области для наложения штрафных санкций и принудительного взыскания через суд.', 160);
     orderDoc.text(splitWarning, 20, y2);

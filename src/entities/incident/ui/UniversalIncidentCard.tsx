@@ -14,6 +14,11 @@ import {
   ArrowRightLeft,
 } from "lucide-react";
 import { generateKnmAct } from "../lib/generateKnmAct";
+import {
+  getPrimaryResponsible,
+  ORGANIZATION_KIND_TITLE,
+  RESPONSIBLE_ROLE_TITLE,
+} from "../lib/responsibles";
 import type { UserRole } from "@/entities/user/types";
 
 interface TProps {
@@ -50,8 +55,9 @@ export const UniversalIncidentCard: React.FC<TProps> = ({ userRole}) => {
     );
   }
 
-  const { id, status, source, location, responsible, timeline, media } =
+  const { id, status, source, location, kp, responsibles, timeline, media } =
     selectedIncident;
+  const primary = getPrimaryResponsible(selectedIncident);
 
   return (
     <div className="flex flex-col bg-white border border-slate-200 rounded-xl shadow-md overflow-hidden max-w-5xl w-full h-full text-slate-900">
@@ -144,11 +150,23 @@ export const UniversalIncidentCard: React.FC<TProps> = ({ userRole}) => {
               <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
                 <div>
                   <span className="block text-xs text-slate-400 font-medium">
-                    Балансодержатель земли
+                    Контейнерная площадка
                   </span>
-                  <span className="font-semibold text-slate-700">
-                    {responsible.organizationName}
-                  </span>
+                  {kp ? (
+                    <span className="font-mono text-xs font-semibold text-slate-700">
+                      {kp.code}
+                      {kp.registryNumber && ` · реестр ${kp.registryNumber}`}
+                      {kp.score < 0.75 && (
+                        <span className="ml-1 font-sans text-amber-600">
+                          (не подтверждена)
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-amber-600">
+                      Не определена — заявка на дом
+                    </span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-xs text-slate-400 font-medium">
@@ -158,6 +176,34 @@ export const UniversalIncidentCard: React.FC<TProps> = ({ userRole}) => {
                     {location.cadastralNumber || "Не определен"}
                   </span>
                 </div>
+                <div className="col-span-2">
+                  <span className="block text-xs text-slate-400 font-medium mb-1">
+                    Ответственные
+                  </span>
+                  {responsibles.length === 0 ? (
+                    <span className="font-semibold text-slate-500">Не определены</span>
+                  ) : (
+                    <ul className="space-y-1">
+                      {responsibles.map((r) => (
+                        <li
+                          key={`${r.role}-${r.organization.id}`}
+                          className="flex flex-wrap items-baseline gap-x-2"
+                        >
+                          <span className="text-xs text-slate-500 w-44 shrink-0">
+                            {RESPONSIBLE_ROLE_TITLE[r.role]}
+                          </span>
+                          <span className="font-semibold text-slate-700">
+                            {r.organization.name}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {ORGANIZATION_KIND_TITLE[r.organization.kind]}
+                            {!r.confirmed && " · не подтверждено"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 {userRole === "INSPECTOR" && (
                   <>
                     <div>
@@ -165,7 +211,7 @@ export const UniversalIncidentCard: React.FC<TProps> = ({ userRole}) => {
                         Контакты оперативного мастера
                       </span>
                       <span className="font-medium text-slate-700">
-                        {responsible.phone}
+                        {primary?.organization.phone || "Нет данных"}
                       </span>
                     </div>
                     <div>
@@ -173,9 +219,9 @@ export const UniversalIncidentCard: React.FC<TProps> = ({ userRole}) => {
                         Индекс рецидивов по адресу
                       </span>
                       <span
-                        className={`font-bold ${responsible.recidivismCount > 2 ? "text-rose-500" : "text-slate-700"}`}
+                        className={`font-bold ${(primary?.recidivismCount ?? 0) > 2 ? "text-rose-500" : "text-slate-700"}`}
                       >
-                        ⚠️ {responsible.recidivismCount}-й раз за месяц
+                        ⚠️ {primary?.recidivismCount ?? 0}-й раз за месяц
                       </span>
                     </div>
                   </>
