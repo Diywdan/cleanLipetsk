@@ -1,5 +1,5 @@
 import React from 'react';
-import { RotateCcw } from 'lucide-react';
+import { LogOut, RotateCcw } from 'lucide-react';
 import { useAuthStore } from '@/entities/user/model/authStore';
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
 import type { UserRole } from '@/entities/user/types';
@@ -109,6 +109,45 @@ export const StandBar: React.FC = () => {
             {!persistent && <span className="size-1.5 rounded-full bg-[#F5B83D]" aria-label="не сохраняется" />}
           </button>
         )}
+      </div>
+    </div>
+  );
+};
+
+// Полоса рабочего контура (VITE_API_URL): данные из CRM, роль — по учётной записи, поэтому
+// вместо переключателей стенда — кто вошёл и выход.
+export const WorkBar: React.FC = () => {
+  const { mode, setMode } = useStandStore();
+  const user = useAuthStore((s) => s.currentUser);
+  const signOut = useAuthStore((s) => s.signOut);
+
+  return (
+    <div
+      className="relative z-50 flex shrink-0 items-center gap-x-3 bg-[#0B1220] px-4 py-1.5 text-[12.5px] text-white/80 md:gap-x-5 md:px-5"
+      style={{ fontFamily: "'Golos Text Variable', sans-serif" }}
+    >
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="size-1.5 shrink-0 rounded-full bg-[#3DDC97]" />
+        <span className="hidden sm:inline">Рабочий контур · данные CRM</span>
+      </span>
+      <div className="ml-auto flex min-w-0 items-center gap-x-2 md:gap-x-5">
+        <Segmented label="Тон" items={MODES} value={mode} onChange={(id) => setMode(id as ModeId)} />
+        {user && (
+          <span className="hidden min-w-0 truncate text-white/75 md:inline" title={user.organizationName}>
+            {user.name}
+            {user.organizationName && user.organizationName !== user.name && (
+              <span className="text-white/50"> · {user.organizationName}</span>
+            )}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => signOut()}
+          className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-white/75 hover:bg-white/10 hover:text-white"
+        >
+          <LogOut className="size-3.5" />
+          <span className="hidden sm:inline">Выйти</span>
+        </button>
       </div>
     </div>
   );

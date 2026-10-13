@@ -142,4 +142,8 @@ export interface IIncident {
     report?: IPhotoReport;    // подробности фотоотчёта
     boundingBoxes: IBoundingBox[];
   };
+  // Отдаёт CRM для сообщений инженера из бота ДРТ: ИИ-разметки там нет, нарушение выбрал человек
+  violationType?: { id: string; name: string | null };
+  comment?: string | null;
+  reviewReason?: string | null; // событие не сошлось со справочниками — инспектор проверяет исполнителя
 }

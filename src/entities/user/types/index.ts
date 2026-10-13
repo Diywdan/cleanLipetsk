@@ -1,5 +1,6 @@
 export type UserRole = 'INSPECTOR' | 'UK' | 'ADMIN';
-export type LipetskDepartment = 'DRT' | 'GZHI' | 'DDHIB' | 'MPLO';
+// Ведомства из макета; CRM для остальных отдаёт ключ ведомства заглавными (EKOPROM, TRANSPORT…)
+export type LipetskDepartment = 'DRT' | 'GZHI' | 'DDHIB' | 'MPLO' | (string & {});
 
 export interface IUser {
   id: string;

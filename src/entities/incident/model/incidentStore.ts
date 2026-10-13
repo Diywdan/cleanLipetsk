@@ -17,6 +17,8 @@ interface IncidentStore {
   api: IncidentApi | null;
 
   load: (api: IncidentApi, openId?: string | null) => Promise<void>;
+  // Тихо перечитать список (новые дела из бота, эскалация сервером) — без индикатора загрузки
+  refresh: () => Promise<void>;
   resetDemo: () => Promise<void>;
   selectIncident: (id: string | null) => void;
   clearError: () => void;
@@ -76,6 +78,22 @@ export const useIncidentStore = create<IncidentStore>((set, get) => {
         });
       } catch (e) {
         set({ isLoading: false, error: e instanceof Error ? e.message : 'Не удалось загрузить обращения' });
+      }
+    },
+
+    refresh: async () => {
+      const api = get().api;
+      if (!api) return;
+      try {
+        const incidents = await api.list();
+        set((state) => ({
+          incidents,
+          selectedIncident: state.selectedIncident
+            ? incidents.find((i) => i.id === state.selectedIncident?.id) ?? null
+            : null,
+        }));
+      } catch {
+        /* сеть моргнула — обновимся в следующий раз */
       }
     },
 

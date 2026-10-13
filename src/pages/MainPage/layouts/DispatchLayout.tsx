@@ -104,7 +104,12 @@ const TopBar: React.FC<{ tab: AppTab; onTab: (t: AppTab) => void }> = ({ tab, on
           <div className="hidden items-center gap-2.5 border-l border-border pl-4 lg:flex">
             <div className="text-right leading-tight">
               <div className="text-[13px] font-medium text-foreground">{user.name}</div>
-              <div className="text-[11.5px] text-muted-foreground">{ROLE_TITLE[user.role]}</div>
+              <div className="text-[11.5px] text-muted-foreground">
+                {/* у аккаунта ведомства имя и организация совпадают — тогда подписываем ролью */}
+                {user.role === 'UK' && user.organizationName && user.organizationName !== user.name
+                  ? user.organizationName
+                  : ROLE_TITLE[user.role]}
+              </div>
             </div>
             <div className="grid size-8 place-items-center rounded-full bg-secondary text-[12px] font-semibold text-secondary-foreground ring-1 ring-primary/30">
               {initials(user.name)}
@@ -190,6 +195,7 @@ const FeedRow: React.FC<{ incident: IIncident; now: number; selected: boolean; o
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13.5px] font-medium text-foreground">{incident.location.address}</span>
           <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
+            {incident.violationType?.name && `${incident.violationType.name} · `}
             {typoQuotes(getPrimaryOrganizationName(incident))} · {timeAgo(incident.timeline.createdAt, now)}
           </span>
         </span>
