@@ -46,7 +46,7 @@ export function loadYmaps3(apiKey: string): Promise<Ymaps3> {
       ymapsLoadPromise = null;
       reject(
         new Error(
-          "Яндекс вернул отказ (часто 403). В кабинете ключа укажите HTTP Referer: localhost",
+          `Яндекс вернул отказ (часто 403). В кабинете ключа укажите HTTP Referer: ${window.location.hostname}`,
         ),
       );
     };
