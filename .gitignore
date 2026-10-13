@@ -26,3 +26,6 @@ dist-ssr
 *.sln
 *.sw?
 !.env.crm
+
+# Подложка карты (130+ МБ) — в git не храним, как получить — README
+public/maps/

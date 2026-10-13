@@ -1,12 +1,30 @@
 
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import type { Plugin } from 'vite'
+import fs from 'fs'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 
+// Подложка карты (public/maps, 130+ МБ) в сборку для CRM не попадает: CRM отдаёт её из своей
+// папки maps/, и выкладка фронта не тащит файл каждый раз
+const skipMapTilesForCrm = (): Plugin => {
+  let outDir = ''
+  return {
+    name: 'skip-map-tiles-for-crm',
+    apply: (_, env) => env.command === 'build' && env.mode === 'crm',
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir)
+    },
+    closeBundle() {
+      fs.rmSync(path.join(outDir, 'maps'), { recursive: true, force: true })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [tailwindcss(), react()],
+  plugins: [tailwindcss(), react(), skipMapTilesForCrm()],
     resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),

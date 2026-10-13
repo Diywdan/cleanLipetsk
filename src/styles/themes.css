@@ -52,8 +52,8 @@
   --chart-axis: #8C9BB2;
   --zone-1: #38D3F2;
   --zone-2: #A78BFA;
-  /* Светлая схема Яндекса → тёмная ночная: инверсия, разворот оттенка, холодный тон */
-  --map-filter: invert(1) hue-rotate(180deg) grayscale(0.55) brightness(0.78) contrast(1.12) sepia(0.18) hue-rotate(175deg) saturate(1.6);
+  /* Тёмная подложка Protomaps → в холодный тон диспетчерской */
+  --map-filter: sepia(0.35) hue-rotate(170deg) saturate(1.5) brightness(0.92);
   --panel-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
   --inset: rgba(0, 0, 0, 0.25);
@@ -138,6 +138,24 @@
 .map-base canvas,
 .map-base img {
   filter: var(--map-filter);
+}
+
+/* Leaflet: фон до загрузки тайлов и подпись источников в тонах темы */
+.map-base.leaflet-container {
+  background: var(--muted);
+  font-family: var(--font-ui);
+}
+.map-base.leaflet-container .leaflet-control-attribution {
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+}
+.map-base.leaflet-container .leaflet-control-attribution a {
+  color: inherit;
+}
+.incident-marker {
+  background: none;
+  border: 0;
 }
 
 .font-num { font-family: var(--font-num); font-variant-numeric: tabular-nums lining-nums; }

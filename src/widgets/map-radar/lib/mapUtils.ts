@@ -1,60 +1,23 @@
+import type { LatLngBoundsExpression, LatLngTuple } from "leaflet";
 import { STATUS_META } from "@/entities/incident/lib/presentation";
 import type { IncidentStatus } from "@/entities/incident/types";
 
-import type { Ymaps3 } from "./ymapsTypes";
+// Файл тайлов: вектор OpenStreetMap по Липецкой области (сборка Protomaps, зум до 15).
+// CRM отдаёт его по /maps/, на стенде без CRM он лежит в public/maps (как получить — README).
+export const MAP_TILES_URL: string =
+  import.meta.env.VITE_MAP_TILES_URL || `${import.meta.env.BASE_URL}maps/lipetsk.pmtiles`;
 
-let ymapsLoadPromise: Promise<Ymaps3> | null = null;
+// Липецк целиком, с левым берегом
+export const MAP_CENTER: LatLngTuple = [52.611, 39.598];
 
-export function loadYmaps3(apiKey: string): Promise<Ymaps3> {
-  const loaded = window.ymaps3;
-  if (loaded) {
-    return loaded.ready.then(() => loaded);
-  }
+// Границы вырезки файла тайлов (--bbox=37.6,51.85,40.8,53.75)
+export const MAP_BOUNDS: LatLngBoundsExpression = [
+  [51.85, 37.6],
+  [53.75, 40.8],
+];
 
-  if (ymapsLoadPromise) return ymapsLoadPromise;
-
-  ymapsLoadPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      "script[data-ymaps3]",
-    );
-
-    const waitUntilReady = async () => {
-      const started = Date.now();
-      while (!window.ymaps3) {
-        if (Date.now() - started > 15000) {
-          throw new Error("Таймаут загрузки Яндекс.Карт");
-        }
-        await new Promise((r) => setTimeout(r, 50));
-      }
-      await window.ymaps3.ready;
-      return window.ymaps3;
-    };
-
-    if (existing) {
-      waitUntilReady().then(resolve).catch(reject);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = `https://api-maps.yandex.ru/v3/?apikey=${apiKey}&lang=ru_RU`;
-    script.async = true;
-    script.dataset.ymaps3 = "true";
-    script.onload = () => {
-      waitUntilReady().then(resolve).catch(reject);
-    };
-    script.onerror = () => {
-      ymapsLoadPromise = null;
-      reject(
-        new Error(
-          `Яндекс вернул отказ (часто 403). В кабинете ключа укажите HTTP Referer: ${window.location.hostname}`,
-        ),
-      );
-    };
-    document.head.appendChild(script);
-  });
-
-  return ymapsLoadPromise;
-}
+// В данных координаты [долгота, широта] (как в GeoJSON), Leaflet ждёт [широта, долгота]
+export const toLatLng = ([lng, lat]: readonly [number, number] | readonly number[]): LatLngTuple => [lat, lng];
 
 // Маркер обращения: светящаяся точка, у новых и КНМ — пульс.
 export function createMarkerElement(

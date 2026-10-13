@@ -498,7 +498,7 @@ export const DispatchLayout: React.FC = () => {
             </div>
           </div>
 
-          {/* Нижняя полоса карты: легенда по центру, по углам — копирайт Яндекса, его закрывать нельзя */}
+          {/* Нижняя полоса карты: легенда по центру, справа — подпись OpenStreetMap, её закрывать нельзя */}
           <div className="pointer-events-none absolute bottom-2 left-1/2 z-10 hidden -translate-x-1/2 xl:block">
             <Glass className="pointer-events-auto rounded-full px-4 py-1.5">
               <ul className="m-0 flex list-none items-center gap-4 p-0 text-[12px] text-muted-foreground">
