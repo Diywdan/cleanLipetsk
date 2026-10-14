@@ -10,6 +10,9 @@ import { can, type Actor, type IncidentAction } from '../../lib/workflow';
 import { useNow } from '@/shared/lib/time';
 import { useAuthStore } from '@/entities/user/model/authStore';
 import { PhotoReportForm } from './PhotoReportForm';
+import { ExecutorPicker } from './ExecutorPicker';
+import { useExecutorStore } from '@/entities/executor/model/executorStore';
+import { isMismatch, reassignState, typeAfterExecutorChange, type ReassignChoice } from '@/entities/executor/lib/reassign';
 import afterPhoto from '@/assets/demo/kp-after.svg';
 
 // Нижняя панель карточки: что может сделать текущая роль с делом в текущем статусе.
@@ -26,6 +29,14 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
   const [comment, setComment] = useState('');
   const [docError, setDocError] = useState<string | null>(null);
   const userName = useAuthStore((u) => u.currentUser?.name);
+
+  // Исполнитель и тип по справочнику CRM (без бэкенда справочника нет — выбор не показывается)
+  const executors = useExecutorStore((x) => x.executors);
+  const maintainer = incident.responsibles.find((r) => r.role === 'site_maintenance')?.organization;
+  const current: ReassignChoice = { executorId: maintainer?.id ?? '', typeId: incident.violationType?.id ?? '' };
+  const [picked, setPicked] = useState<ReassignChoice | null>(null);
+  const choice = picked ?? current;
+  const reassign = reassignState(executors, current, choice);
 
   const actor: Actor = { kind: 'USER', role, name: '' };
   const allowed = (a: IncidentAction) => can(a, incident, actor, now);
@@ -96,12 +107,30 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
               </div>
             </div>
           )}
+          {executors.length > 0 && maintainer && (
+            <ExecutorPicker
+              executors={executors}
+              current={current}
+              currentNames={{ executor: maintainer.name, type: incident.violationType?.name ?? null }}
+              choice={choice}
+              state={reassign}
+              mismatch={isMismatch(executors, current)}
+              onChange={setPicked}
+              onExecutorChange={(executorId) =>
+                setPicked({
+                  executorId,
+                  // вернулись к пришедшему ведомству — вместе с ним возвращается и пришедший тип
+                  typeId: typeAfterExecutorChange(executors, executorId, choice.typeId) || (executorId === current.executorId ? current.typeId : ''),
+                })
+              }
+            />
+          )}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr]">
             <Button variant="outline" onClick={() => setStep('dismiss')} className={`${secondary} text-danger`}>
               Ложное срабатывание
             </Button>
-            <Button onClick={() => s.confirmIncident(id, deadline)} className={primary}>
-              Подтвердить и направить в УК
+            <Button onClick={() => s.confirmIncident(id, deadline, reassign.payload)} disabled={!reassign.valid} className={primary}>
+              Подтвердить и направить исполнителю
             </Button>
           </div>
         </div>

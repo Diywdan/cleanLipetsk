@@ -31,8 +31,17 @@ export const PhotoEvidence: React.FC<{
   const boxColor = 'var(--st-knm)';
   const frame = 'rounded-lg bg-black ring-1 ring-border';
 
+  // Сообщение инженера может прийти без снимка — тогда сравнивать не с чем
   const picture = media.photoAfterUrl ? (
-    <ImageCompareSlider beforeUrl={media.photoBeforeUrl} afterUrl={media.photoAfterUrl} />
+    media.photoBeforeUrl ? (
+      <ImageCompareSlider beforeUrl={media.photoBeforeUrl} afterUrl={media.photoAfterUrl} />
+    ) : (
+      <img src={media.photoAfterUrl} alt={`Фото после устранения: ${location.address}`} className="block aspect-video w-full object-cover" />
+    )
+  ) : !media.photoBeforeUrl ? (
+    <div className="grid aspect-video place-items-center px-6 text-center text-[13px] text-white/60">
+      Фото нарушения не приложено
+    </div>
   ) : (
     <div className="relative aspect-video overflow-hidden">
       <img

@@ -67,6 +67,20 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
           <SlaMeter incident={inc} formattedTime={m.sla.formattedTime} msLeft={m.sla.msLeft} isExpired={m.sla.isExpired} label={m.sla.label} />
         )}
 
+        {(inc.violationType?.name || inc.comment || inc.reviewReason) && (
+          <Section title="Нарушение">
+            <div className="rounded-lg border border-border bg-[var(--inset)] px-3 py-2.5">
+              {inc.violationType?.name && <div className="text-[14px] font-semibold text-foreground">{inc.violationType.name}</div>}
+              {inc.comment && <p className="m-0 mt-1 text-[13px] text-muted-foreground">{inc.comment}</p>}
+            </div>
+            {inc.reviewReason && (
+              <p className="m-0 mt-2 rounded-lg bg-warning/10 px-3 py-2 text-[12.5px] text-warning">
+                Не сходится со справочниками: {inc.reviewReason}
+              </p>
+            )}
+          </Section>
+        )}
+
         <Section title="Фотофиксация" aside={!inc.media.photoAfterUrl && <AiToggle checked={m.showAi} onChange={m.setShowAi} />}>
           <PhotoEvidence incident={inc} showAi={m.showAi} />
           <ReportMeta incident={inc} />

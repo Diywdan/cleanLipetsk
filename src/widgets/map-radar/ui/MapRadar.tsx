@@ -1,9 +1,9 @@
 import React, { useRef, } from 'react';
-import { useYandexMap } from '../lib/useYandexMap';
+import 'leaflet/dist/leaflet.css';
+import { useLeafletMap } from '../lib/useLeafletMap';
 import { useIncidentMarkers } from '../lib/useIncidentMarkers';
 import { STATUS_META, STATUS_ORDER } from '@/entities/incident/lib/presentation';
-
-import './../lib/ymapsTypes';
+import { useStandStore } from '@/shared/theme/standStore';
 
 interface TProps {
   // chrome — карточка с заголовком и легендой (базовая тема);
@@ -12,27 +12,24 @@ interface TProps {
   className?: string;
 }
 
-// Сама карта с маркерами. Пересоздаётся при смене темы (key в раскладке),
-// чтобы зоны УК взяли цвета новой темы.
+// Сама карта с маркерами; при смене темы меняет подложку и цвета зон УК.
 const MapCanvas: React.FC<{ className?: string }> = ({ className = '' }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const { mapReady, error, mapRef } = useYandexMap(mapContainerRef);
+  const mode = useStandStore((s) => s.mode);
+  const { mapReady, tilesMissing, mapRef } = useLeafletMap(mapContainerRef, mode);
   useIncidentMarkers(mapReady, mapRef);
 
   return (
     <div className={`relative overflow-hidden bg-muted ${className}`}>
-      {/* Пустой узел только для Яндекса — React сюда children не кладёт */}
-      <div ref={mapContainerRef} className="map-base absolute inset-0" />
+      {/* Пустой узел только для Leaflet — React сюда children не кладёт. isolate держит z-index
+          слоёв Leaflet (400–1000) внутри карты, иначе они лягут поверх панелей раскладки */}
+      <div ref={mapContainerRef} className="map-base absolute inset-0 isolate" />
 
-      {error && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 bg-muted px-6 text-center">
-          <span className="text-[15px] font-medium text-foreground">Карта недоступна</span>
-          <span className="max-w-md text-[13px] text-muted-foreground">{error}</span>
-        </div>
-      )}
-      {!error && !mapReady && (
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center text-[14px] text-muted-foreground">
-          Загрузка карты…
+      {tilesMissing && (
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-20 flex justify-center px-6">
+          <span className="rounded-md bg-card px-3 py-1.5 text-center text-[13px] text-muted-foreground ring-1 ring-border">
+            Подложка карты не загрузилась: {tilesMissing}
+          </span>
         </div>
       )}
     </div>

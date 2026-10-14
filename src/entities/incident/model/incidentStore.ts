@@ -17,12 +17,14 @@ interface IncidentStore {
   api: IncidentApi | null;
 
   load: (api: IncidentApi, openId?: string | null) => Promise<void>;
+  // Тихо перечитать список (новые дела из бота, эскалация сервером) — без индикатора загрузки
+  refresh: () => Promise<void>;
   resetDemo: () => Promise<void>;
   selectIncident: (id: string | null) => void;
   clearError: () => void;
 
   // Маршрут дела (правила — lib/workflow.ts)
-  confirmIncident: (id: string, deadlineHours: DeadlineHours) => Promise<void>;
+  confirmIncident: (id: string, deadlineHours: DeadlineHours, reassign?: { executorId?: string; typeViolationId?: string }) => Promise<void>;
   dismissIncident: (id: string, reason?: string) => Promise<void>;
   submitPhotoReport: (id: string, report: IPhotoReport) => Promise<void>;
   approveIncident: (id: string) => Promise<void>;
@@ -79,6 +81,22 @@ export const useIncidentStore = create<IncidentStore>((set, get) => {
       }
     },
 
+    refresh: async () => {
+      const api = get().api;
+      if (!api) return;
+      try {
+        const incidents = await api.list();
+        set((state) => ({
+          incidents,
+          selectedIncident: state.selectedIncident
+            ? incidents.find((i) => i.id === state.selectedIncident?.id) ?? null
+            : null,
+        }));
+      } catch {
+        /* сеть моргнула — обновимся в следующий раз */
+      }
+    },
+
     resetDemo: async () => {
       const api = get().api;
       if (!api?.reset) return;
@@ -94,7 +112,7 @@ export const useIncidentStore = create<IncidentStore>((set, get) => {
 
     clearError: () => set({ error: null }),
 
-    confirmIncident: (id, deadlineHours) => run(id, 'CONFIRM', { deadlineHours }),
+    confirmIncident: (id, deadlineHours, reassign) => run(id, 'CONFIRM', { deadlineHours, ...reassign }),
     dismissIncident: (id, reason) => run(id, 'DISMISS', { reason }),
     submitPhotoReport: (id, report) => run(id, 'SUBMIT_REPORT', { report }),
     approveIncident: (id) => run(id, 'APPROVE', {}),

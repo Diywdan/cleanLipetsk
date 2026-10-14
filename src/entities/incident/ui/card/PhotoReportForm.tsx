@@ -5,6 +5,7 @@ import type { IIncident, IPhotoReport } from '../../types';
 import { compressImage } from '@/shared/lib/image';
 import { REPORT_RADIUS_M, currentPosition, distanceM } from '@/shared/lib/geo';
 import { formatDateTime } from '../../lib/presentation';
+import { API_URL } from '@/shared/api/http';
 
 // Фотоотчёт мастера УК: снимок с камеры телефона или из галереи, предпросмотр,
 // время съёмки и расстояние до площадки. Инспектор видит то же в хронике и карточке.
@@ -92,8 +93,9 @@ export const PhotoReportForm: React.FC<{
         <Button onClick={() => send(photo, takenAt ?? new Date().toISOString())} disabled={busy} className={buttonClass}>
           {busy ? 'Отправляю…' : 'Отправить фотоотчёт'}
         </Button>
-      ) : (
-        // На стенде нет телефона с убранной площадкой — условный снимок «стало»
+      ) : API_URL ? null : (
+        // На стенде нет телефона с убранной площадкой — условный снимок «стало».
+        // В рабочем контуре его нет: CRM принимает только настоящий снимок.
         <button
           type="button"
           onClick={() => send(demoPhoto, new Date().toISOString(), false)}

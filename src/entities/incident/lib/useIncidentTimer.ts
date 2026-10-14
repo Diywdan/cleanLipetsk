@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useIncidentStore } from '../model/incidentStore';
+import { API_URL } from '@/shared/api/http';
 
 interface UseIncidentTimerResult {
   formattedTime: string; // Строка вида "23:59:45" или "Срок истёк"
@@ -30,8 +31,9 @@ export function useIncidentTimer(incidentId: string, deadlineAt?: string, status
       setNow(t);
       // КРИТИЧЕСКИЙ СЦЕНАРИЙ: время вышло — авто-перевод в надзорный контур ГЖИ Липецка
       if (deadlineMs - t <= 0) {
-        // На КНМ уходит только дело в работе; отчёт на проверке инспектор решает сам
-        if (status === 'IN_PROGRESS') triggerKnmEscalation(incidentId);
+        // На КНМ уходит только дело в работе; отчёт на проверке инспектор решает сам.
+        // С бэкендом эскалирует фоновая задача CRM, список подтянет периодическое обновление.
+        if (status === 'IN_PROGRESS' && !API_URL) triggerKnmEscalation(incidentId);
         done = true; // первый тик и интервал не должны эскалировать дважды
         return true;
       }
