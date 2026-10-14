@@ -38,7 +38,7 @@
 | Метод | Путь | Тело | Ответ |
 |---|---|---|---|
 | GET | `/incidents` | — | `IIncident[]` |
-| POST | `/incidents/{id}/confirm` | `{ "deadlineHours": 24 \| 48 \| 72 }` | `IIncident` |
+| POST | `/incidents/{id}/confirm` | `{ "deadlineHours": 24 \| 48 \| 72, "executorId"?: string, "typeViolationId"?: string }` | `IIncident` |
 | POST | `/incidents/{id}/dismiss` | `{ "reason"?: string }` | `IIncident` |
 | POST | `/incidents/{id}/report` | `{ "report": IPhotoReport }` | `IIncident` |
 | POST | `/incidents/{id}/approve` | `{}` | `IIncident` |
@@ -47,6 +47,11 @@
 | POST | `/incidents/{id}/act` | `{}` | `IIncident` |
 
 В ответе всегда дело целиком после действия, вместе с новой записью в `timeline.history`.
+
+`executorId` и `typeViolationId` в confirm передаются, только если инспектор поменял исполнителя или тип
+нарушения. CRM проверяет, что ведомство и тип активны и ведомство отвечает за этот тип (иначе `422`), и пишет
+замену в хронику. Подтверждение без них оставляет пару как пришла, даже с расхождением со справочником;
+CRM отмечает это в хронике и снимает `reviewReason`.
 
 ### Маршрут дела
 
@@ -98,6 +103,17 @@ interface IPhotoReport {
 - среднее время устранения.
 
 Когда обращений станет много, эти числа лучше отдавать с бэкенда: `GET /kp/{id}/stats`.
+
+## Справочник ведомств и типов нарушений
+
+| Метод | Путь | Ответ |
+|---|---|---|
+| GET | `/executors` | ведомства с их типами нарушений |
+
+Это справочник CRM как есть, поля в snake_case: `executor_id`, `name`, `kind`, `is_active`,
+`violation_types[]` (`type_violation_id`, `name`, `is_active`). Нужен инспектору при подтверждении дела,
+фронт берёт только активные (`src/entities/executor/model/executorApi.ts`). Без бэкенда справочника нет,
+и выбор исполнителя не показывается.
 
 ## Чего в контракте пока нет
 

@@ -6,6 +6,8 @@ import { DEMO_KP } from "@/entities/incident/model/demoIncidents";
 import { createIncidentApi } from "@/entities/incident/api/incidentApi";
 import { createKpApi } from "@/entities/kp/model/kpApi";
 import { useKpStore } from "@/entities/kp/model/kpStore";
+import { createExecutorApi } from "@/entities/executor/model/executorApi";
+import { useExecutorStore } from "@/entities/executor/model/executorStore";
 import { kpFromIncidents } from "@/entities/kp/lib/registry";
 import { useAuthStore } from "@/entities/user/model/authStore";
 import { API_URL } from "@/shared/api/http";
@@ -20,9 +22,11 @@ export default function App() {
   const load = useIncidentStore((state) => state.load);
   const refresh = useIncidentStore((state) => state.refresh);
   const loadKp = useKpStore((state) => state.load);
+  const loadExecutors = useExecutorStore((state) => state.load);
   const dataset = useStandStore((state) => state.dataset);
   const status = useAuthStore((state) => state.status);
   const userId = useAuthStore((state) => state.currentUser?.id);
+  const role = useAuthStore((state) => state.currentUser?.role);
   const restore = useAuthStore((state) => state.restore);
 
   // С бэкендом сначала узнаём, есть ли сессия; на стенде пользователь известен сразу
@@ -40,6 +44,11 @@ export default function App() {
     load(createIncidentApi(dataset, seed), new URLSearchParams(window.location.search).get("id"));
     loadKp(createKpApi(() => kpFromIncidents(seed(), dataset === "demo" ? DEMO_KP : [])));
   }, [dataset, load, loadKp, status, userId]);
+
+  // Справочник ведомств и типов — инспектору: поправить исполнителя при подтверждении дела
+  useEffect(() => {
+    if (status === "ready" && role === "INSPECTOR") loadExecutors(createExecutorApi());
+  }, [loadExecutors, role, status]);
 
   useEffect(() => {
     if (!API_URL || status !== "ready") return;

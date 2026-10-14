@@ -24,7 +24,7 @@ interface IncidentStore {
   clearError: () => void;
 
   // Маршрут дела (правила — lib/workflow.ts)
-  confirmIncident: (id: string, deadlineHours: DeadlineHours) => Promise<void>;
+  confirmIncident: (id: string, deadlineHours: DeadlineHours, reassign?: { executorId?: string; typeViolationId?: string }) => Promise<void>;
   dismissIncident: (id: string, reason?: string) => Promise<void>;
   submitPhotoReport: (id: string, report: IPhotoReport) => Promise<void>;
   approveIncident: (id: string) => Promise<void>;
@@ -112,7 +112,7 @@ export const useIncidentStore = create<IncidentStore>((set, get) => {
 
     clearError: () => set({ error: null }),
 
-    confirmIncident: (id, deadlineHours) => run(id, 'CONFIRM', { deadlineHours }),
+    confirmIncident: (id, deadlineHours, reassign) => run(id, 'CONFIRM', { deadlineHours, ...reassign }),
     dismissIncident: (id, reason) => run(id, 'DISMISS', { reason }),
     submitPhotoReport: (id, report) => run(id, 'SUBMIT_REPORT', { report }),
     approveIncident: (id) => run(id, 'APPROVE', {}),
