@@ -34,14 +34,14 @@ export function useLeafletMap(mapContainerRef: RefObject<HTMLDivElement | null>,
 
     const map = L.map(container, {
       center: MAP_CENTER,
-      zoom: 12.75,
-      zoomSnap: 0.25,
-      zoomDelta: 0.5,
-      minZoom: 8,
+      zoom: 12,
+      zoomSnap: 1,
+      zoomDelta: 1,
+      minZoom: 10,
       maxZoom: 18,
       // Файл тайлов покрывает только область — дальше карту не уводим
       maxBounds: MAP_BOUNDS,
-      maxBoundsViscosity: 0.8,
+      maxBoundsViscosity: 1.0,
       zoomControl: false,
     });
 
@@ -98,7 +98,8 @@ export function useLeafletMap(mapContainerRef: RefObject<HTMLDivElement | null>,
       url: MAP_TILES_URL,
       flavor: mode === 'light' ? 'light' : 'dark',
       lang: 'ru',
-      maxDataZoom: 15,
+      maxDataZoom: 13,
+      paintRules: [],
       attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">участники OpenStreetMap</a>',
     });
     base.addTo(map);
