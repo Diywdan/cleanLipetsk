@@ -1,6 +1,7 @@
 import type { IHistoryEvent, IIncident, IncidentStatus, IPhotoReport } from '../types';
 import type { UserRole } from '@/entities/user/types';
 import { resolveDeadlineHours, type DeadlineHours } from './sla';
+import { getPrimaryResponsible } from './responsibles';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Маршрут дела: кто, из какого статуса и что может сделать. Единственное место,
@@ -102,7 +103,7 @@ function historyEvent(incident: IIncident, actor: Actor, at: string, title: stri
 }
 
 function executorName(i: IIncident): string {
-  return i.responsibles.find((r) => r.role === 'site_maintenance')?.organization.name ?? 'исполнителю';
+  return getPrimaryResponsible(i)?.organization.name ?? 'исполнителю';
 }
 
 // Применить действие: новое дело с новым статусом, сроками и записью в хронике.

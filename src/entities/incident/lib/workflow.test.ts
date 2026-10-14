@@ -48,6 +48,13 @@ describe('маршрут дела: переходы', () => {
     expect(next.timeline.history?.at(-1)?.title).toBe('Нарушение подтверждено');
   });
 
+  it('дело о вывозе уходит регоператору, даже если содержателя площадки нет', () => {
+    const operator = { id: 'EXEC-0002', name: 'АО «ЭКОПРОМ-ЛИПЕЦК»', kind: 'REG_OPERATOR' as const };
+    const waste = incident({ responsibles: [{ role: 'waste_removal', organization: operator, confirmed: true, recidivismCount: 0 }] });
+    const next = applyAction(waste, 'CONFIRM', { deadlineHours: 24 }, inspector, T0);
+    expect(next.timeline.history?.at(-1)?.description).toContain('АО «ЭКОПРОМ-ЛИПЕЦК»');
+  });
+
   it('для поручения руководства срок — сутки, что бы ни выбрал инспектор', () => {
     const next = applyAction(incident({ source: 'DIRECT_ORDER' }), 'CONFIRM', { deadlineHours: 72 }, inspector, T0);
     expect(next.timeline.deadlineAt).toBe(at(T0 + 24 * HOUR));

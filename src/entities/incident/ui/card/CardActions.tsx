@@ -7,6 +7,7 @@ import { useIncidentStore } from '../../model/incidentStore';
 import { formatDeadline } from '../../lib/presentation';
 import { isDeadlineFixed, resolveDeadlineHours, type DeadlineHours } from '../../lib/sla';
 import { can, type Actor, type IncidentAction } from '../../lib/workflow';
+import { getPrimaryResponsible } from '../../lib/responsibles';
 import { useNow } from '@/shared/lib/time';
 import { useAuthStore } from '@/entities/user/model/authStore';
 import { PhotoReportForm } from './PhotoReportForm';
@@ -32,7 +33,8 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
 
   // Исполнитель и тип по справочнику CRM (без бэкенда справочника нет — выбор не показывается)
   const executors = useExecutorStore((x) => x.executors);
-  const maintainer = incident.responsibles.find((r) => r.role === 'site_maintenance')?.organization;
+  // Основной исполнитель: содержатель площадки, а в делах о вывозе — регоператор
+  const maintainer = getPrimaryResponsible(incident)?.organization;
   const current: ReassignChoice = { executorId: maintainer?.id ?? '', typeId: incident.violationType?.id ?? '' };
   const [picked, setPicked] = useState<ReassignChoice | null>(null);
   const choice = picked ?? current;

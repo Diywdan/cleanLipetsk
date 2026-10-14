@@ -27,6 +27,8 @@ const DATA_SOURCE: Record<KpDataSource, string> = {
 };
 
 type Filter = 'all' | 'open' | 'unconfirmed';
+// В реестре тысячи площадок (ФГИС УТКО по Липецку — ~3 тыс.): рисуем порциями, поиск идёт по всем
+const PAGE = 100;
 type Row = { kp: IKpCard; stats: KpStats; unconfirmed: boolean };
 
 function readKpFromUrl(): string | null {
@@ -46,6 +48,7 @@ export const KpRegistryPage: React.FC<{ onOpenIncident: (id: string) => void }> 
   const now = useNow(60_000);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
+  const [limit, setLimit] = useState(PAGE);
   const [selectedId, setSelectedId] = useState<string | null>(readKpFromUrl);
 
   const select = (id: string | null) => {
@@ -94,12 +97,15 @@ export const KpRegistryPage: React.FC<{ onOpenIncident: (id: string) => void }> 
             <Search className="size-4 shrink-0 text-muted-foreground" />
             <input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setLimit(PAGE);
+              }}
               placeholder="Адрес, код LP- или номер реестра"
               className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-muted-foreground"
             />
             {query && (
-              <button type="button" onClick={() => setQuery('')} aria-label="Очистить поиск" className="cursor-pointer text-muted-foreground hover:text-foreground">
+              <button type="button" onClick={() => { setQuery(''); setLimit(PAGE); }} aria-label="Очистить поиск" className="cursor-pointer text-muted-foreground hover:text-foreground">
                 <X className="size-4" />
               </button>
             )}
@@ -109,7 +115,10 @@ export const KpRegistryPage: React.FC<{ onOpenIncident: (id: string) => void }> 
               <button
                 key={c.id}
                 type="button"
-                onClick={() => setFilter(c.id)}
+                onClick={() => {
+                  setFilter(c.id);
+                  setLimit(PAGE);
+                }}
                 aria-pressed={filter === c.id}
                 className={`cursor-pointer rounded-full px-2.5 py-1 text-[12.5px] ring-1 transition-colors ${
                   filter === c.id ? 'bg-primary/15 text-foreground ring-primary/50' : 'text-muted-foreground ring-border hover:text-foreground'
@@ -123,7 +132,7 @@ export const KpRegistryPage: React.FC<{ onOpenIncident: (id: string) => void }> 
 
         {loadError && <p className="m-0 p-4 text-[13px] text-danger">{loadError}</p>}
         <ul className="m-0 min-h-0 flex-1 list-none overflow-y-auto p-2">
-          {visible.map(({ kp, stats, unconfirmed: unconf }) => (
+          {visible.slice(0, limit).map(({ kp, stats, unconfirmed: unconf }) => (
             <li key={kp.id}>
               <button
                 type="button"
@@ -153,6 +162,17 @@ export const KpRegistryPage: React.FC<{ onOpenIncident: (id: string) => void }> 
               </button>
             </li>
           ))}
+          {visible.length > limit && (
+            <li className="p-2">
+              <button
+                type="button"
+                onClick={() => setLimit((n) => n + PAGE * 5)}
+                className="w-full cursor-pointer rounded-xl px-3 py-2.5 text-[13px] text-muted-foreground ring-1 ring-border hover:bg-[var(--hover)] hover:text-foreground"
+              >
+                Показать ещё · {limit} из {visible.length}
+              </button>
+            </li>
+          )}
           {visible.length === 0 && <li className="p-4 text-[13px] text-muted-foreground">Ничего не нашлось.</li>}
         </ul>
       </Glass>
