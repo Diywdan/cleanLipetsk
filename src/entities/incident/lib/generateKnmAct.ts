@@ -38,7 +38,7 @@ export const generateKnmAct = async (incident: IIncident, signer?: string) => {
   const recidivism = getRecidivismCount(incident);
 
   try {
-    const localFontUrl = '/fonts/PT-Sans-Regular.ttf';
+    const localFontUrl = `${import.meta.env.BASE_URL}fonts/PT-Sans-Regular.ttf`;
     const fontBase64 = await fetchLocalFontAsBase64(localFontUrl);
     const fontFileName = '/fonts/PT-Sans-Regular.ttf';
 

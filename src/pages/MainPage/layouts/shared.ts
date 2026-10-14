@@ -7,7 +7,7 @@ export type AppTab = 'map_view' | 'analytics' | 'kp';
 
 export const ROLE_TITLE: Record<UserRole, string> = {
   INSPECTOR: 'Инспектор ДРТ',
-  UK: 'Мастер управляющей компании',
+  UK: 'Исполнитель',
   ADMIN: 'Руководство',
 };
 

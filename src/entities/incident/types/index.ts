@@ -38,7 +38,7 @@ export interface IBoundingBox {
 // 4. Гео-данные для твоей Интерактивной карты Липецка
 export interface IGeoLocation {
   address: string;
-  // [долгота, широта] — порядок Яндекс Карт v3. ФГИС УТКО и большинство реестров отдают
+  // [долгота, широта] — порядок GeoJSON (Leaflet ждёт обратный, карта разворачивает сама). ФГИС УТКО и большинство реестров отдают
   // широту первой: при загрузке реальных данных пару нужно развернуть.
   coordinates: [number, number];
   cadastralNumber?: string;      // Кадастровый номер для подсветки полигона ответственности УК
@@ -142,4 +142,8 @@ export interface IIncident {
     report?: IPhotoReport;    // подробности фотоотчёта
     boundingBoxes: IBoundingBox[];
   };
+  // Отдаёт CRM для сообщений инженера из бота ДРТ: ИИ-разметки там нет, нарушение выбрал человек
+  violationType?: { id: string; name: string | null };
+  comment?: string | null;
+  reviewReason?: string | null; // событие не сошлось со справочниками — инспектор проверяет исполнителя
 }
