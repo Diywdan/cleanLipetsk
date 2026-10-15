@@ -1,8 +1,9 @@
 import type { IExecutorRef, IViolationTypeRef } from '../types';
 
 // Выбор исполнителя и типа нарушения при подтверждении дела. Правило то же, что проверяет CRM:
-// ведомство должно отвечать за выбранный тип. Оставить как пришло можно всегда —
-// CRM запишет в хронику, что инспектор принял расхождение со справочниками.
+// ведомство должно отвечать за выбранный тип. Оставить как пришло можно, если исполнитель и тип
+// есть, — CRM запишет в хронику, что инспектор принял расхождение со справочниками. Проблема
+// из домовых чатов может прийти без них: тогда без выбора подтвердить нельзя.
 
 export interface ReassignChoice {
   executorId: string;
@@ -23,7 +24,10 @@ export function reassignState(executors: IExecutorRef[], current: ReassignChoice
   const types = executor?.types ?? [];
   const changed = chosen.executorId !== current.executorId || chosen.typeId !== current.typeId;
   const base = { types, changed, payload: {} };
-  if (!changed) return { ...base, valid: true, problem: null };
+  if (!changed) {
+    const missing = !current.executorId ? 'Выберите исполнителя' : !current.typeId ? 'Выберите тип нарушения' : null;
+    return { ...base, valid: missing === null, problem: missing };
+  }
   if (!executor) return { ...base, valid: false, problem: 'Выберите исполнителя' };
   if (!types.some((t) => t.id === chosen.typeId)) {
     return { ...base, valid: false, problem: 'Выберите тип нарушения: этот исполнитель отвечает только за свои типы' };

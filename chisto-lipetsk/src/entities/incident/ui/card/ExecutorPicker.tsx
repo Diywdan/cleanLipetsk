@@ -46,7 +46,7 @@ export const ExecutorPicker: React.FC<Props> = ({ executors, current, currentNam
     : [{ id: current.executorId, name: `${currentNames.executor} — нет в справочнике`, kind: 'OMSU' as const, types: [] }, ...executors];
   const typeItems =
     choice.executorId === current.executorId && current.typeId && !state.types.some((t) => t.id === current.typeId)
-      ? [{ id: current.typeId, name: `${currentNames.type ?? current.typeId} — не у этого исполнителя` }, ...state.types]
+      ? [{ id: current.typeId, name: `${currentNames.type ?? current.typeId}${current.executorId ? ' — не у этого исполнителя' : ''}` }, ...state.types]
       : state.types;
 
   return (
