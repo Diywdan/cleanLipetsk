@@ -109,11 +109,11 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
               </div>
             </div>
           )}
-          {executors.length > 0 && maintainer && (
+          {executors.length > 0 && (
             <ExecutorPicker
               executors={executors}
               current={current}
-              currentNames={{ executor: maintainer.name, type: incident.violationType?.name ?? null }}
+              currentNames={{ executor: maintainer?.name ?? 'не определён', type: incident.violationType?.name ?? null }}
               choice={choice}
               state={reassign}
               mismatch={isMismatch(executors, current)}

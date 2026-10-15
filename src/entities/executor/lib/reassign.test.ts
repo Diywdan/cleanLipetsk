@@ -38,4 +38,16 @@ describe('выбор исполнителя при подтверждении', 
     expect(typeAfterExecutorChange(EXECUTORS, 'EXEC-0002', 'T-POTHOLES')).toBe('');
     expect(reassignState(EXECUTORS, current, { executorId: 'EXEC-0001', typeId: '' }).valid).toBe(false);
   });
+
+  it('дело без исполнителя или типа (из домовых чатов) без выбора не подтверждается', () => {
+    const empty = { executorId: '', typeId: 'T-KGO' };
+    expect(reassignState(EXECUTORS, empty, empty)).toMatchObject({ valid: false, problem: 'Выберите исполнителя' });
+    expect(isMismatch(EXECUTORS, empty)).toBe(true);
+    const noType = { executorId: 'EXEC-0002', typeId: '' };
+    expect(reassignState(EXECUTORS, noType, noType)).toMatchObject({ valid: false, problem: 'Выберите тип нарушения' });
+    expect(reassignState(EXECUTORS, empty, { executorId: 'EXEC-0002', typeId: 'T-KGO' })).toMatchObject({
+      valid: true,
+      payload: { executorId: 'EXEC-0002' },
+    });
+  });
 });
