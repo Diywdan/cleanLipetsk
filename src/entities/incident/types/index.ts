@@ -1,5 +1,5 @@
 // 1. Фиксируем все этапы маршрутной карты из документов аналитиков
-export type IncidentStatus = 
+export type IncidentStatus =
   | 'NEW'             // Выявлено ИИ, ждет проверки инспектора (таймер 24ч)
   | 'IN_PROGRESS'     // Подтверждено, передано в УК (таймер 24-72ч)
   | 'VERIFICATION'    // УК загрузила фотоотчет "Стало", инспектор проверяет
@@ -7,21 +7,21 @@ export type IncidentStatus =
   | 'KNM_ESCALATION'; // Срок вышел, материалы переданы в надзорный контур (ГЖИ/Минприроды)
 
 // 2. Маркируем источники сигналов для фильтрации на карте и в списках
-export type IncidentSource = 
+export type IncidentSource =
   // ─── Базовый пилотный контур ───
   | 'AI_CAMERA'           // Автоматические ИИ-камеры благоустройства
   | 'TSUR'                // Сигналы Центра управления регионом (ЦУР)
   | 'SED'                 // Старая система электронного документооборота
   | 'OMSU_CHAT'           // Оперативный внутренний чат ОМСУ
   | 'INSPECTION'          // Ручная фиксация инженером во время обхода
-  
+
   // ─── Расширенный контур регламента ДРТ ───
   | 'DELO_WEB'            // Система «Дело-web» (официальные письма)
   | 'GOVERNOR_PORTAL'     // Портал губернатора Липецкой области
   | 'HOUSE_CHATS'         // Общедомовые чаты жителей
   | 'MAKS_CHAT'           // Чат ДРТ в мессенджере «Макс» (от канцелярии)
   | 'DRT_WEBSITE'         // Обращения с официального сайта ДРТ
-  | 'DIRECT_ORDER';       // Личное указание руководства ДРТ (Высший приоритет) 
+  | 'DIRECT_ORDER';       // Личное указание руководства ДРТ (Высший приоритет)
 
 // 3. Структура ИИ-разметки (Bounding Box) для отрисовки поверх фото нарушения
 export interface IBoundingBox {
@@ -29,7 +29,7 @@ export interface IBoundingBox {
   label: string;       // Например: "Переполнение бака", "Навал КГМ"
   confidence: number;  // Точность распознавания нейросетью (0.00 - 1.00)
   // Процентные координаты (0-100) для идеальной адаптивности на фронтенде
-  x: number; 
+  x: number;
   y: number;
   width: number;
   height: number;
@@ -153,5 +153,47 @@ export interface IIncident {
   violationType?: { id: string; name: string | null };
   comment?: string | null;
   reviewReason?: string | null; // событие не сошлось со справочниками — инспектор проверяет исполнителя
+
   knmPackage?: IKnmPackage | null;
+
+  document_service?: {
+    control_case_id: number | null;
+    status: 'generated' | 'needs_input';
+    url: string | null;
+    readiness: {
+      issues: Array<{ document: string | null; field: string; message: string }>;
+      missing_templates: string[];
+    };
+  };
+}
+
+export interface IDocumentServiceOptions {
+  control_kinds: Array<{ id: number; name: string }>;
+  control_forms: Array<{ id: number; name: string }>;
+  control_bodies: Array<{ id: number; name: string }>;
+  control_objects: Array<{ id: number; name: string; object_type: string; address: string | null }>;
+  organizations: Array<{ id: number; name: string; inn: string | null }>;
+  signatories: Array<{ id: number; control_body_id: number; name: string; position: string }>;
+  basis_kinds: Array<{ code: string; name: string }>;
+  decision_item_kinds: Array<{ code: string; name: string }>;
+  subjects: Array<{ value: string }>;
+  values: IDocumentServiceData;
+}
+
+export interface IDocumentServiceData {
+  subject: string | null;
+  control_kind_id: number | null;
+  control_form_id: number | null;
+  control_body_id: number | null;
+  control_object_id: number | null;
+  controlled_organization_id: number | null;
+  assignment_approved_by_signatory_id: number | null;
+  planned_start_at: string | null;
+  planned_end_at: string | null;
+  basis_kind: string | null;
+  basis_document_number: string | null;
+  basis_document_date: string | null;
+  basis_description: string | null;
+  decision_item_kind: string | null;
+  decision_item_description: string | null;
 }

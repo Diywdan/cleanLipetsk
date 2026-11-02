@@ -36,7 +36,7 @@ export default defineConfig({
     // Разработка с CRM: VITE_API_URL=/api/v1, запросы уходят на локальную CRM с того же адреса,
     // поэтому кука сессии работает без CORS
     proxy: {
-      '/api': process.env.CRM_DEV_URL || 'http://127.0.0.1:18081',
+      '/api': process.env.CRM_DEV_URL || 'http://127.0.0.1:18080',
     },
   },
 })

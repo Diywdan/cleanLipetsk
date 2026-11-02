@@ -201,3 +201,18 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 178, 220, 0.22) transparent;
 }
+
+.document-service-fields {
+  max-height: min(55dvh, 34rem);
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  scrollbar-width: auto;
+  scrollbar-color: var(--primary) var(--inset);
+}
+.document-service-fields::-webkit-scrollbar { width: 10px; }
+.document-service-fields::-webkit-scrollbar-track { background: var(--inset); border-radius: 9999px; }
+.document-service-fields::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border: 2px solid var(--inset);
+  border-radius: 9999px;
+}
