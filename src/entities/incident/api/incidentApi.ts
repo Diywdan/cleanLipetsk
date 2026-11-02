@@ -38,6 +38,9 @@ export function createMockIncidentApi(storageKey: string, seed: () => IIncident[
     async act(id, action, payload, actor) {
       const current = data.find((i) => i.id === id);
       if (!current) throw new Error(`Обращение ${id} не найдено`);
+      if (action === 'ISSUE_ACT') {
+        throw new Error('Формирование пакета КНМ доступно только при подключении к CRM.');
+      }
       const next = applyAction(current, action, payload, actor, Date.now());
       data = data.map((i) => (i.id === id ? next : i));
       save();
@@ -73,7 +76,7 @@ export function createHttpIncidentApi(baseUrl: string): IncidentApi {
 }
 
 // Версия демо-набора: поменяли генератор — увеличьте, иначе сохранённое в браузере перекроет новые данные
-const DEMO_DATA_VERSION = 2;
+const DEMO_DATA_VERSION = 3;
 
 export function createIncidentApi(dataset: string, seed: () => IIncident[]): IncidentApi {
   return API_URL ? createHttpIncidentApi(API_URL) : createMockIncidentApi(`chisto.demo.v${DEMO_DATA_VERSION}.${dataset}`, seed);

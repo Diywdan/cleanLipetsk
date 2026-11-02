@@ -125,6 +125,13 @@ export interface IPhotoReport {
   comment?: string;
 }
 
+export interface IKnmPackage {
+  status?: string;
+  packageId?: string;
+  readinessErrors?: string[];
+  documents?: { name?: string; downloadUrl?: string }[];
+}
+
 // 8. Единый монолитный интерфейс инцидента (Главная сущность системы)
 export interface IIncident {
   id: string;
@@ -146,4 +153,5 @@ export interface IIncident {
   violationType?: { id: string; name: string | null };
   comment?: string | null;
   reviewReason?: string | null; // событие не сошлось со справочниками — инспектор проверяет исполнителя
+  knmPackage?: IKnmPackage | null;
 }
