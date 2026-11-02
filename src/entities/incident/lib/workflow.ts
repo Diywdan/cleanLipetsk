@@ -165,8 +165,7 @@ export function applyAction<A extends IncidentAction>(
       log('Срок истёк', 'Материалы переданы на контрольно-надзорное мероприятие.');
       break;
     case 'ISSUE_ACT':
-      log('Сформирован акт и предписание', 'Документы выгружены в PDF.');
-      break;
+      throw new WorkflowError('Формирование пакета КНМ доступно только через CRM.');
   }
   return next;
 }

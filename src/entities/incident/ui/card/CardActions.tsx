@@ -8,12 +8,12 @@ import { formatDeadline } from '../../lib/presentation';
 import { isDeadlineFixed, resolveDeadlineHours, type DeadlineHours } from '../../lib/sla';
 import { can, type Actor, type IncidentAction } from '../../lib/workflow';
 import { useNow } from '@/shared/lib/time';
-import { useAuthStore } from '@/entities/user/model/authStore';
 import { PhotoReportForm } from './PhotoReportForm';
 import { ExecutorPicker } from './ExecutorPicker';
 import { useExecutorStore } from '@/entities/executor/model/executorStore';
 import { isMismatch, reassignState, typeAfterExecutorChange, type ReassignChoice } from '@/entities/executor/lib/reassign';
 import afterPhoto from '@/assets/demo/kp-after.svg';
+import { getKnmPackageDocuments } from '../../lib/knmPackage';
 
 // Нижняя панель карточки: что может сделать текущая роль с делом в текущем статусе.
 // Доступность кнопок — из правил lib/workflow.ts, тех же, что проверяет API.
@@ -27,8 +27,10 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
   const [deadline, setDeadline] = useState<DeadlineHours>(48);
   const [step, setStep] = useState<'dismiss' | 'return' | null>(null);
   const [comment, setComment] = useState('');
-  const [docError, setDocError] = useState<string | null>(null);
-  const userName = useAuthStore((u) => u.currentUser?.name);
+  const [isGeneratingKnmPackage, setIsGeneratingKnmPackage] = useState(false);
+  const knmDocuments = getKnmPackageDocuments(incident);
+  const knmPackageStatus = incident.knmPackage?.status?.trim();
+  const knmReadinessErrors = incident.knmPackage?.readinessErrors?.filter((message) => typeof message === 'string' && message.trim());
 
   // Исполнитель и тип по справочнику CRM (без бэкенда справочника нет — выбор не показывается)
   const executors = useExecutorStore((x) => x.executors);
@@ -41,7 +43,7 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
   const actor: Actor = { kind: 'USER', role, name: '' };
   const allowed = (a: IncidentAction) => can(a, incident, actor, now);
 
-  // Длинные подписи («Сформировать акт и предписание (PDF)») переносятся, а не обрезаются
+  // Длинные подписи переносятся, а не обрезаются
   const btn = 'h-auto min-h-10 whitespace-normal py-2 text-[14px]';
   const primary = `${btn} font-semibold hover:bg-primary/90 shadow-[0_0_28px_-6px_var(--primary)]`;
   const secondary = `${btn} bg-transparent hover:bg-[var(--hover)]`;
@@ -217,24 +219,54 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
       return (
         <div className="flex flex-col gap-3">
           {note('bad', 'Срок устранения истёк. Материалы готовятся к передаче на контрольно-надзорное мероприятие.')}
+          {knmDocuments && (
+            <div className="flex flex-col gap-2">
+              <p className="m-0 text-[14px] text-success">Пакет №{knmDocuments.packageId} сформирован.</p>
+              <ul className="m-0 flex list-inside list-disc flex-col gap-1 text-[14px]">
+                {knmDocuments.documents.map((document, index) => (
+                  <li key={`${document.downloadUrl}-${index}`}>
+                    <a
+                      href={document.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline underline-offset-2"
+                    >
+                      {document.name || `Документ ${index + 1}`}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {knmPackageStatus && !knmDocuments && (
+            <div role="status" className="rounded-md px-3 py-2.5 text-[14px] text-danger" style={{ background: 'var(--st-knm-bg)' }}>
+              <p className="m-0">
+                CRM пока не сформировала пакет (статус: {knmPackageStatus}).
+              </p>
+              {!!knmReadinessErrors?.length && (
+                <ul className="mb-0 mt-2 list-inside list-disc">
+                  {knmReadinessErrors.map((message, index) => <li key={`${message}-${index}`}>{message}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
           {allowed('ISSUE_ACT') && (
             <Button
+              disabled={isGeneratingKnmPackage}
               onClick={async () => {
-                setDocError(null);
+                s.clearError();
+                setIsGeneratingKnmPackage(true);
                 try {
-                  const { generateKnmAct } = await import('../../lib/generateKnmAct');
-                  await generateKnmAct(incident, userName);
                   await s.issueKnmAct(id);
-                } catch (e) {
-                  setDocError(e instanceof Error ? e.message : 'Не удалось сформировать документы');
+                } finally {
+                  setIsGeneratingKnmPackage(false);
                 }
               }}
               className={primary}
             >
-              <FileDown /> Сформировать акт и предписание (PDF)
+              <FileDown /> {isGeneratingKnmPackage ? 'Запрос к CRM…' : 'Сформировать пакет КНМ'}
             </Button>
           )}
-          {docError && <p role="alert" className="m-0 text-[13px] text-danger">{docError}</p>}
         </div>
       );
     }

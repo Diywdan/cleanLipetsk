@@ -17,7 +17,6 @@
     "@tailwindcss/vite": "^4.3.3",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
-    "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.47.0",
     "protomaps-leaflet": "^5.1.0",

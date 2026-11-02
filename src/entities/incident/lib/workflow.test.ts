@@ -37,6 +37,18 @@ describe('маршрут дела: права', () => {
       expect(availableActions(incident({ status }), admin, T0)).toEqual([]);
     }
   });
+
+  it('инспектор может запросить пакет КНМ без локального документа пакета', () => {
+    expect(can('ISSUE_ACT', incident({ status: 'KNM_ESCALATION' }), inspector, T0)).toBe(true);
+    expect(
+      can(
+        'ISSUE_ACT',
+        incident({ status: 'KNM_ESCALATION', knmPackage: { status: 'needs_input' } }),
+        inspector,
+        T0,
+      ),
+    ).toBe(true);
+  });
 });
 
 describe('маршрут дела: переходы', () => {
@@ -84,9 +96,11 @@ describe('маршрут дела: переходы', () => {
     expect(i.timeline.history).toEqual([]);
   });
 
-  it('акт КНМ не меняет статус, но попадает в хронику', () => {
-    const i = applyAction(incident({ status: 'KNM_ESCALATION' }), 'ISSUE_ACT', {}, inspector, T0);
-    expect(i.status).toBe('KNM_ESCALATION');
-    expect(i.timeline.history?.at(-1)?.title).toBe('Сформирован акт и предписание');
+  it('локальный маршрут не имитирует генерацию пакета КНМ', () => {
+    const i = incident({ status: 'KNM_ESCALATION' });
+    expect(() => applyAction(i, 'ISSUE_ACT', {}, inspector, T0)).toThrow(
+      'Формирование пакета КНМ доступно только через CRM.',
+    );
+    expect(i.timeline.history).toEqual([]);
   });
 });
