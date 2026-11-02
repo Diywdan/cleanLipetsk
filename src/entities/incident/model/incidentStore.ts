@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { IIncident, IPhotoReport } from '../types';
+import type { IDocumentServiceData, IIncident, IPhotoReport } from '../types';
 import type { DeadlineHours } from '../lib/sla';
 import type { ActionPayload, Actor, IncidentAction } from '../lib/workflow';
 import type { IncidentApi } from '../api/incidentApi';
@@ -32,6 +32,8 @@ interface IncidentStore {
   // auto — по таймеру срока (автор — система), иначе вручную инспектором
   triggerKnmEscalation: (id: string, auto?: boolean) => Promise<void>;
   issueKnmAct: (id: string) => Promise<void>;
+  syncDocuments: (id: string) => Promise<void>;
+  saveDocumentServiceData: (id: string, data: IDocumentServiceData) => Promise<boolean>;
 }
 
 function currentActor(): Actor {
@@ -119,5 +121,35 @@ export const useIncidentStore = create<IncidentStore>((set, get) => {
     returnIncident: (id, comment) => run(id, 'RETURN', { comment }),
     triggerKnmEscalation: (id, auto = true) => run(id, 'ESCALATE', {}, auto ? { kind: 'SYSTEM' } : undefined),
     issueKnmAct: (id) => run(id, 'ISSUE_ACT', {}),
+    syncDocuments: async (id) => {
+      const api = get().api;
+      if (!api) return;
+      try {
+        const updated = await api.syncDocuments(id);
+        set((state) => ({
+          incidents: state.incidents.map((i) => (i.id === id ? updated : i)),
+          selectedIncident: state.selectedIncident?.id === id ? updated : state.selectedIncident,
+          error: null,
+        }));
+      } catch (e) {
+        set({ error: e instanceof Error ? e.message : 'Не удалось обновить статус документов' });
+      }
+    },
+    saveDocumentServiceData: async (id, data) => {
+      const api = get().api;
+      if (!api) return false;
+      try {
+        const updated = await api.saveDocumentServiceData(id, data);
+        set((state) => ({
+          incidents: state.incidents.map((i) => (i.id === id ? updated : i)),
+          selectedIncident: state.selectedIncident?.id === id ? updated : state.selectedIncident,
+          error: null,
+        }));
+        return true;
+      } catch (e) {
+        set({ error: e instanceof Error ? e.message : 'Не удалось сохранить данные документов' });
+        return false;
+      }
+    },
   };
 });

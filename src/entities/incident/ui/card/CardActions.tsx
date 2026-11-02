@@ -3,6 +3,7 @@ import { CheckCircle2, FileDown, Gavel } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { IIncident } from '../../types';
 import type { UserRole } from '@/entities/user/types';
+import { DocumentServicePanel } from './DocumentServicePanel';
 import { useIncidentStore } from '../../model/incidentStore';
 import { formatDeadline } from '../../lib/presentation';
 import { isDeadlineFixed, resolveDeadlineHours, type DeadlineHours } from '../../lib/sla';
@@ -274,7 +275,12 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
     // Ждём действия другой стороны
     if (role === 'ADMIN') return hint('Режим просмотра: решения по делу принимают инспектор и исполнитель.');
     if (status === 'NEW') return hint('Обращение на проверке у инспектора ДРТ.');
-    if (status === 'IN_PROGRESS') return hint(role === 'INSPECTOR' ? 'Ждём фотоотчёт исполнителя.' : 'Срок вышел — решение за инспектором.');
+    if (status === 'IN_PROGRESS') return (
+      <>
+        {hint(role === 'INSPECTOR' ? 'Ждём фотоотчёт исполнителя.' : 'Срок вышел — решение за инспектором.')}
+        {role === 'INSPECTOR' && incident.document_service && <DocumentServicePanel incident={incident} />}
+      </>
+    );
     if (status === 'VERIFICATION') return hint('Фотоотчёт отправлен, инспектор проверяет.');
     return null;
   })();
