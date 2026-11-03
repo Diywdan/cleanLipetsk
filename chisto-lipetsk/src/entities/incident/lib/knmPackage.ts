@@ -21,7 +21,7 @@ export function getKnmPackageDocuments(incident: IIncident): KnmPackageDocuments
     return null;
   }
 
-  const documents = knmPackage.documents.flatMap((document) => {
+  const documents = knmPackage.documents.flatMap((document): KnmPackageDocuments['documents'] => {
     if (!document || typeof document !== 'object') return [];
     const code = typeof document.code === 'string' ? document.code : undefined;
     const name = typeof document.name === 'string' ? document.name : undefined;
