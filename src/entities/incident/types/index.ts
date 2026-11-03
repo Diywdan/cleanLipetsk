@@ -127,9 +127,9 @@ export interface IPhotoReport {
 
 export interface IKnmPackage {
   status?: string;
-  packageId?: string;
+  packageId?: string | number;
   readinessErrors?: string[];
-  documents?: { name?: string; downloadUrl?: string }[];
+  documents?: { code?: string | null; name?: string | null; downloadUrl?: string | null }[];
 }
 
 // 8. Единый монолитный интерфейс инцидента (Главная сущность системы)

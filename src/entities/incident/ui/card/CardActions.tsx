@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle2, FileDown, Gavel } from 'lucide-react';
+import { CheckCircle2, Gavel } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { IIncident } from '../../types';
 import type { UserRole } from '@/entities/user/types';
@@ -28,9 +28,10 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
   const [deadline, setDeadline] = useState<DeadlineHours>(48);
   const [step, setStep] = useState<'dismiss' | 'return' | null>(null);
   const [comment, setComment] = useState('');
-  const [isGeneratingKnmPackage, setIsGeneratingKnmPackage] = useState(false);
+  const [generatingKnmPackage, setGeneratingKnmPackage] = useState(false);
   const knmDocuments = getKnmPackageDocuments(incident);
   const knmPackageStatus = incident.knmPackage?.status?.trim();
+  const knmPackageGenerated = knmPackageStatus?.toLowerCase() === 'generated';
   const knmReadinessErrors = incident.knmPackage?.readinessErrors?.filter((message) => typeof message === 'string' && message.trim());
 
   // Исполнитель и тип по справочнику CRM (без бэкенда справочника нет — выбор не показывается)
@@ -220,26 +221,65 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
       return (
         <div className="flex flex-col gap-3">
           {note('bad', 'Срок устранения истёк. Материалы готовятся к передаче на контрольно-надзорное мероприятие.')}
-          {knmDocuments && (
+          {role === 'INSPECTOR' && <DocumentServicePanel incident={incident} />}
+          {role === 'INSPECTOR' && incident.document_service?.control_case_id != null && !knmPackageGenerated && (
             <div className="flex flex-col gap-2">
-              <p className="m-0 text-[14px] text-success">Пакет №{knmDocuments.packageId} сформирован.</p>
-              <ul className="m-0 flex list-inside list-disc flex-col gap-1 text-[14px]">
-                {knmDocuments.documents.map((document, index) => (
-                  <li key={`${document.downloadUrl}-${index}`}>
-                    <a
-                      href={document.downloadUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary underline underline-offset-2"
-                    >
-                      {document.name || `Документ ${index + 1}`}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <Button
+                onClick={async () => {
+                  setGeneratingKnmPackage(true);
+                  try {
+                    await s.issueKnmAct(id);
+                  } finally {
+                    setGeneratingKnmPackage(false);
+                  }
+                }}
+                disabled={generatingKnmPackage}
+                className={primary}
+              >
+                {generatingKnmPackage ? 'Проверяю готовность и формирую…' : 'Проверить готовность и сформировать пакет КНМ'}
+              </Button>
+              <p className="m-0 text-[12px] text-muted-foreground">
+                Сначала Document Service проверит обязательные поля и шаблоны. Если есть замечания, пакет не будет создан — причины появятся здесь.
+              </p>
             </div>
           )}
-          {knmPackageStatus && !knmDocuments && (
+          {knmPackageGenerated && (
+            <div className="flex flex-col gap-2">
+              <p className="m-0 text-[14px] text-success">
+                Пакет №{knmDocuments?.packageId ?? incident.knmPackage?.packageId ?? '—'} сформирован.
+              </p>
+              {!!knmDocuments?.documents.length && (
+                <ul className="m-0 flex list-inside list-disc flex-col gap-1 text-[14px]">
+                  {knmDocuments.documents.map((document, index) => (
+                    <li key={`${document.code ?? document.name ?? ''}-${index}`}>
+                      {document.downloadUrl ? (
+                        <a
+                          href={document.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline underline-offset-2"
+                        >
+                          {document.name || `Документ ${index + 1}`}
+                        </a>
+                      ) : (
+                        document.name || `Документ ${index + 1}`
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!knmDocuments?.documents.some((document) => document.downloadUrl) && (
+                <p className="m-0 text-[12px] text-muted-foreground">
+                  Ссылки на скачивание не получены. Откройте Document Service
+                  {incident.document_service?.url && (
+                    <>: <a href={incident.document_service.url} target="_blank" rel="noreferrer" className="text-primary underline">перейти к делу</a></>
+                  )}
+                  .
+                </p>
+              )}
+            </div>
+          )}
+          {knmPackageStatus && !knmPackageGenerated && (
             <div role="status" className="rounded-md px-3 py-2.5 text-[14px] text-danger" style={{ background: 'var(--st-knm-bg)' }}>
               <p className="m-0">
                 CRM пока не сформировала пакет (статус: {knmPackageStatus}).
@@ -251,22 +291,10 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
               )}
             </div>
           )}
-          {allowed('ISSUE_ACT') && (
-            <Button
-              disabled={isGeneratingKnmPackage}
-              onClick={async () => {
-                s.clearError();
-                setIsGeneratingKnmPackage(true);
-                try {
-                  await s.issueKnmAct(id);
-                } finally {
-                  setIsGeneratingKnmPackage(false);
-                }
-              }}
-              className={primary}
-            >
-              <FileDown /> {isGeneratingKnmPackage ? 'Запрос к CRM…' : 'Сформировать пакет КНМ'}
-            </Button>
+          {role === 'INSPECTOR' && (
+            <p className="m-0 text-[12px] text-muted-foreground">
+              Сохранение основных данных формирует Задание и Решение. Полный пакет КНМ формируется после проверки готовности кнопкой выше; файлы можно открыть по ссылкам после успешного формирования.
+            </p>
           )}
         </div>
       );
@@ -278,7 +306,7 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
     if (status === 'IN_PROGRESS') return (
       <>
         {hint(role === 'INSPECTOR' ? 'Ждём фотоотчёт исполнителя.' : 'Срок вышел — решение за инспектором.')}
-        {role === 'INSPECTOR' && incident.document_service && <DocumentServicePanel incident={incident} />}
+        {role === 'INSPECTOR' && <DocumentServicePanel incident={incident} />}
       </>
     );
     if (status === 'VERIFICATION') return hint('Фотоотчёт отправлен, инспектор проверяет.');
