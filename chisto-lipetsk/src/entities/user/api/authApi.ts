@@ -10,6 +10,7 @@ interface MeResponse {
   role: UserRole | null;
   department: string;
   organizationName: string | null;
+  permissions?: string[];
 }
 
 export async function fetchMe(baseUrl: string): Promise<IUser> {
@@ -21,6 +22,7 @@ export async function fetchMe(baseUrl: string): Promise<IUser> {
     role: me.role,
     department: me.department,
     organizationName: me.organizationName ?? undefined,
+    permissions: me.permissions ?? [],
   };
 }
 

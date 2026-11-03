@@ -8,4 +8,5 @@ export interface IUser {
   role: UserRole;
   department: LipetskDepartment;
   organizationName?: string; // Заполняется, если роль === 'UK' (например, "УК Левобережная")
+  permissions?: string[]; // Права учётной записи CRM (рабочий контур); на стенде без входа не задаются
 }

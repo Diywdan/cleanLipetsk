@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogOut, RotateCcw } from 'lucide-react';
+import { LogOut, RotateCcw, Settings } from 'lucide-react';
 import { useAuthStore } from '@/entities/user/model/authStore';
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
 import type { UserRole } from '@/entities/user/types';
@@ -114,12 +114,16 @@ export const StandBar: React.FC = () => {
   );
 };
 
+const ADMIN_PERMISSIONS = ['engineers.write', 'users.write'];
+
 // Полоса рабочего контура (VITE_API_URL): данные из CRM, роль — по учётной записи, поэтому
 // вместо переключателей стенда — кто вошёл и выход.
 export const WorkBar: React.FC = () => {
   const { mode, setMode } = useStandStore();
   const user = useAuthStore((s) => s.currentUser);
   const signOut = useAuthStore((s) => s.signOut);
+  // Консоль CRM (/admin/): инженеры по MAX ID, участки, пользователи и администраторы
+  const canAdmin = Boolean(user?.permissions?.some((p) => ADMIN_PERMISSIONS.includes(p)));
 
   return (
     <div
@@ -139,6 +143,16 @@ export const WorkBar: React.FC = () => {
               <span className="text-white/50"> · {user.organizationName}</span>
             )}
           </span>
+        )}
+        {canAdmin && (
+          <a
+            href={`${import.meta.env.BASE_URL}admin/`}
+            title="Консоль администратора CRM: инженеры, участки, пользователи"
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-white/75 hover:bg-white/10 hover:text-white"
+          >
+            <Settings className="size-3.5" />
+            <span className="hidden sm:inline">Администрирование</span>
+          </a>
         )}
         <button
           type="button"
