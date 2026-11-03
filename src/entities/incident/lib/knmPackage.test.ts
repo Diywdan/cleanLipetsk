@@ -9,7 +9,7 @@ describe('getKnmPackageDocuments', () => {
         incident({
           knmPackage: {
             status: 'Generated',
-            packageId: ' knm-0001 ',
+            packageId: 45,
             documents: [
               { name: 'Акт', downloadUrl: 'https://crm.example/act.pdf' },
               { name: 'Предписание', downloadUrl: 'http://crm.example/order.pdf' },
@@ -20,7 +20,7 @@ describe('getKnmPackageDocuments', () => {
         }),
       ),
     ).toEqual({
-      packageId: 'knm-0001',
+      packageId: '45',
       documents: [
         { name: 'Акт', downloadUrl: 'https://crm.example/act.pdf' },
         { name: 'Предписание', downloadUrl: 'http://crm.example/order.pdf' },
@@ -32,8 +32,29 @@ describe('getKnmPackageDocuments', () => {
     { status: 'needs_input', packageId: 'knm-1', documents: [{ downloadUrl: 'https://crm.example/act.pdf' }] },
     { status: 'generated', packageId: ' ', documents: [{ downloadUrl: 'https://crm.example/act.pdf' }] },
     { status: 'generated', packageId: 'knm-1', documents: [] },
-    { status: 'generated', packageId: 'knm-1', documents: [{ downloadUrl: 'javascript:alert(1)' }] },
   ])('не считает неполный пакет сформированным: %o', (knmPackage) => {
     expect(getKnmPackageDocuments(incident({ knmPackage }))).toBeNull();
+  });
+
+  it('сохраняет список сформированных документов, даже если ссылки ещё недоступны', () => {
+    expect(
+      getKnmPackageDocuments(
+        incident({
+          knmPackage: {
+            status: 'generated',
+            packageId: 45,
+            documents: [
+              { code: 'act', name: 'Акт', downloadUrl: null },
+              { code: 'prescription', name: 'Предписание', downloadUrl: 'javascript:alert(1)' },
+            ],
+          },
+        }),
+      ),
+    ).toEqual({
+      packageId: '45',
+      documents: [
+        { code: 'act', name: 'Акт' },
+      ],
+    });
   });
 });

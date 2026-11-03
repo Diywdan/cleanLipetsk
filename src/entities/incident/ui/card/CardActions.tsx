@@ -31,6 +31,7 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
   const [generatingKnmPackage, setGeneratingKnmPackage] = useState(false);
   const knmDocuments = getKnmPackageDocuments(incident);
   const knmPackageStatus = incident.knmPackage?.status?.trim();
+  const knmPackageGenerated = knmPackageStatus?.toLowerCase() === 'generated';
   const knmReadinessErrors = incident.knmPackage?.readinessErrors?.filter((message) => typeof message === 'string' && message.trim());
 
   // Исполнитель и тип по справочнику CRM (без бэкенда справочника нет — выбор не показывается)
@@ -221,7 +222,7 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
         <div className="flex flex-col gap-3">
           {note('bad', 'Срок устранения истёк. Материалы готовятся к передаче на контрольно-надзорное мероприятие.')}
           {role === 'INSPECTOR' && <DocumentServicePanel incident={incident} />}
-          {role === 'INSPECTOR' && incident.document_service?.control_case_id != null && !knmDocuments && (
+          {role === 'INSPECTOR' && incident.document_service?.control_case_id != null && !knmPackageGenerated && (
             <div className="flex flex-col gap-2">
               <Button
                 onClick={async () => {
@@ -242,26 +243,43 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
               </p>
             </div>
           )}
-          {knmDocuments && (
+          {knmPackageGenerated && (
             <div className="flex flex-col gap-2">
-              <p className="m-0 text-[14px] text-success">Пакет №{knmDocuments.packageId} сформирован.</p>
-              <ul className="m-0 flex list-inside list-disc flex-col gap-1 text-[14px]">
-                {knmDocuments.documents.map((document, index) => (
-                  <li key={`${document.downloadUrl}-${index}`}>
-                    <a
-                      href={document.downloadUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary underline underline-offset-2"
-                    >
-                      {document.name || `Документ ${index + 1}`}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <p className="m-0 text-[14px] text-success">
+                Пакет №{knmDocuments?.packageId ?? incident.knmPackage?.packageId ?? '—'} сформирован.
+              </p>
+              {!!knmDocuments?.documents.length && (
+                <ul className="m-0 flex list-inside list-disc flex-col gap-1 text-[14px]">
+                  {knmDocuments.documents.map((document, index) => (
+                    <li key={`${document.code ?? document.name ?? ''}-${index}`}>
+                      {document.downloadUrl ? (
+                        <a
+                          href={document.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline underline-offset-2"
+                        >
+                          {document.name || `Документ ${index + 1}`}
+                        </a>
+                      ) : (
+                        document.name || `Документ ${index + 1}`
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!knmDocuments?.documents.some((document) => document.downloadUrl) && (
+                <p className="m-0 text-[12px] text-muted-foreground">
+                  Ссылки на скачивание не получены. Откройте Document Service
+                  {incident.document_service?.url && (
+                    <>: <a href={incident.document_service.url} target="_blank" rel="noreferrer" className="text-primary underline">перейти к делу</a></>
+                  )}
+                  .
+                </p>
+              )}
             </div>
           )}
-          {knmPackageStatus && !knmDocuments && (
+          {knmPackageStatus && !knmPackageGenerated && (
             <div role="status" className="rounded-md px-3 py-2.5 text-[14px] text-danger" style={{ background: 'var(--st-knm-bg)' }}>
               <p className="m-0">
                 CRM пока не сформировала пакет (статус: {knmPackageStatus}).
