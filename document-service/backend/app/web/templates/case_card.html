@@ -1,0 +1,639 @@
+{% extends "base.html" %}
+{% block title %}Заявка №{{ case.case_number or case.id }}{% endblock %}
+{% block content %}
+
+<div class="actions" style="margin-bottom:14px">
+  <a class="button ghost" href="/ui">← К списку</a>
+  <a class="button" href="/ui/cases/{{ case.id }}/edit">Редактировать заявку</a>
+  <a class="button ghost" href="/ui/cases/{{ case.id }}/copy">Копировать заявку</a>
+</div>
+
+<div class="card">
+  {# Номер заявки — внутренний и сквозной: его присваивает система. #}
+  <h2>Заявка №{{ case.case_number or case.id }}
+    {% if case.erp_number %}<span class="muted">· мероприятие {{ case.erp_number }}</span>{% endif %}
+    <span class="muted">· состояние: {{ state }}</span>
+  </h2>
+  <div class="grid">
+    <div><label>Дата контроля</label>
+      {% if control_due_on %}
+        <span{% if control_overdue %} style="color:#c62828; font-weight:600"{% endif %}>
+          {{ control_due_on|dtr }}{% if control_overdue %} — срок прошёл{% endif %}
+        </span>
+        <div class="muted">{{ control_source }}</div>
+      {% else %}
+        {# Дата контроля берётся из срока исполнения нарушения, поэтому и
+           подсказка ведёт к нему, а не повторяет «не установлена». #}
+        <span class="muted">не установлена — задайте срок исполнения нарушения</span>
+      {% endif %}
+    </div>
+    <div><label>Вид контроля</label>{{ case.control_kind.name if case.control_kind else "—" }}</div>
+    <div><label>Форма мероприятия</label>{{ case.control_form.name if case.control_form else "—" }}</div>
+    <div><label>Орган контроля</label>{{ case.control_body.name if case.control_body else "—" }}</div>
+    <div><label>Контролируемое лицо</label>
+      {{ case.controlled_organization.short_name if case.controlled_organization else "—" }}
+      {% if case.controlled_unit %}<div class="muted">{{ case.controlled_unit.name }}</div>{% endif %}
+    </div>
+    {# Ответственный за исполнение назначается прямо в карточке: он нужен и
+       по заявке без документов, и делопроизводителю не приходится уходить
+       ради этого в форму заявки. Поле заполняет человек — система пока не
+       назначает ответственного сама. #}
+    <div><label>Ответственный за исполнение</label>
+      {% if can_build_packages and responsible_organizations %}
+        <form method="post" action="/ui/cases/{{ case.id }}/responsible"
+              style="display:flex; gap:6px; margin:0">
+          <select name="responsible_organization_id">
+            <option value="">— не назначен —</option>
+            {% for item in responsible_organizations %}
+              <option value="{{ item.id }}"
+                      {% if case.responsible_organization_id == item.id %}selected{% endif %}>{{ item.short_name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="button ghost" style="white-space:nowrap">Назначить</button>
+        </form>
+      {% else %}
+        {{ case.responsible_organization.short_name if case.responsible_organization else "—" }}
+      {% endif %}
+    </div>
+    <div><label>Объект контроля</label>{{ case.control_object.name if case.control_object else "—" }}</div>
+    <div><label>Управа</label>
+      {% for area in details.areas %}{{ area.name }}{% if not loop.last %}, {% endif %}{% else %}
+        <span class="muted">не определена — адрес объекта не входит ни в одну управу</span>
+      {% endfor %}
+    </div>
+    <div><label>Задание</label>{{ case.assignment_number or "—" }} от {{ case.assignment_date|dtr or "—" }}</div>
+    <div><label>Фактические сроки</label>
+      {{ case.actual_start_at|dtr or "—" }} — {{ case.actual_end_at|dtr or "—" }}
+    </div>
+    <div><label>Акт составлен</label>{{ case.act_composed_at|dtr or "—" }}</div>
+  </div>
+</div>
+
+{# То, что человек ввёл при создании заявки, читается первым — иначе
+   заявка выглядит пустой, хотя данные есть. #}
+<div class="card" style="border-left:4px solid #2e7d32">
+  <div class="row" style="margin:0"><label>Что случилось</label>
+    <div style="font-size:15px">{{ case.subject or "— не заполнено —" }}</div></div>
+</div>
+
+<div class="card">
+  <h2>Предмет, цель и участники</h2>
+  <div class="row"><label>Цель проведения</label>
+    <div>{{ case.purpose or "—" }}</div></div>
+  <div class="grid">
+    <div><label>Основание</label>
+      {% if details.basis %}
+        {{ details.basis.description or details.basis_title }}
+        {% if details.basis.document_number %}№ {{ details.basis.document_number }}{% endif %}
+        {% if details.basis.document_date %}от {{ details.basis.document_date.strftime("%d.%m.%Y") }}{% endif %}
+      {% else %}—{% endif %}
+    </div>
+    <div><label>Инспекторы</label>
+      {% for inspector in details.inspectors %}{{ inspector.full_name }}<br>{% else %}—{% endfor %}
+    </div>
+    <div><label>Контрольное действие</label>
+      {% if details.action %}
+        {{ details.action_title }}:
+        {% if details.action.started_at %}{{ details.action.started_at.strftime("%d.%m.%Y %H:%M") }}{% endif %}
+        {% if details.action.ended_at %} — {{ details.action.ended_at.strftime("%d.%m.%Y %H:%M") }}{% endif %}
+      {% else %}—{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Нарушение, предписание, решение</h2>
+  <div class="row"><label>Нарушение</label>
+    {# Вид нарушения, адрес и дата выявления вводятся при создании заявки —
+       значит, должны быть видны и в карточке, иначе заявка выглядит пустой. #}
+    <div><b>{{ details.violation.violation_type.name if details.violation and details.violation.violation_type else "вид не указан" }}</b>
+      {% if details.violation and details.violation.detected_at %}
+        <span class="muted">· выявлено {{ details.violation.detected_at|dtr }}</span>
+      {% endif %}</div>
+    <div style="margin-top:4px">{{ details.violation.description if details.violation else "—" }}</div>
+    {% if details.violation_works %}
+      <div class="muted" style="margin-top:4px">
+        Работы: {# работы с объёмами — из них собираются оба текста #}
+        {% for item in details.violation_works %}
+          {{ item.work.name }} – {{ item.quantity_text }}{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if details.violation and details.violation.address %}
+      <div class="muted" style="margin-top:4px">Адрес нарушения: {{ details.violation.address.full_address }}</div>
+    {% endif %}
+    {% if details.violation_provisions %}
+      <div class="muted" style="margin-top:4px">
+        Нормы: {# название акта печатается один раз на все его нормы #}
+        {% for title, items in details.violation_provisions|npa_groups(genitive=True) %}
+          {%- if not loop.first %}; {% endif -%}
+          {% for article in items %}{{ article.reference_template }}{% if not loop.last %}, {% endif %}{% endfor %}
+          {%- if title %} {{ title }}{% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  <div class="grid">
+    {# Срок исполнения нарушения — отдельное поле заявки, оно не зависит от
+       предписания и нужно без документов. Дата контроля берётся отсюда, пока
+       предписания нет. #}
+    <div><label>Срок исполнения нарушения</label>
+      {% if case.control_due_on %}{{ case.control_due_on|dtr }}{% else %}
+        <span class="muted">не установлен</span>{% endif %}
+      {% if details.prescription and details.prescription.due_on %}
+        <div class="muted" style="font-size:12px">
+          дата контроля — срок предписания: {{ details.prescription.due_on|dtr }}
+        </div>
+      {% elif case.control_due_on %}
+        <div class="muted" style="font-size:12px">это и есть дата контроля по заявке</div>
+      {% endif %}
+    </div>
+    <div><label>Предписание</label>
+      {% if details.prescription %}
+        № {{ details.prescription.number or "—" }} от
+        {{ details.prescription.issued_on|dtr or "—" }},
+        срок до {{ details.prescription.due_on|dtr or "—" }}
+      {% else %}—{% endif %}
+    </div>
+    <div><label>Требование</label>
+      <div>{{ details.prescription_requirement_text or "—" }}</div>
+    </div>
+    <div><label>Решение</label>
+      {% if details.decision %}
+        от {{ details.decision.decision_date|dtr or "—" }}
+        {% if details.decision_item %}: {{ details.decision_item.description }}{% endif %}
+      {% else %}—{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Осмотры</h2>
+  <p class="muted" style="margin-top:0">
+    Осмотр — отдельный шаг: инспектор выходит на объект, отмечает дату, время,
+    место и фотографию. Осмотр ценен сам по себе: заявка может закончиться им,
+    без пакета документов, и данные можно дополнить в промежутке.
+  </p>
+  <div class="actions">
+    {% if available_inspection_kind %}
+      <form method="post" action="/ui/cases/{{ case.id }}/inspections" style="display:inline">
+        <input type="hidden" name="kind" value="{{ available_inspection_kind.value }}">
+        <button type="submit">
+          {{ "Сделать осмотр" if available_inspection_kind.value == "primary" else "Сделать повторный осмотр" }}
+        </button>
+      </form>
+    {% else %}
+      {# Оба осмотра сделаны — это законченный ход работы, а не недоделка:
+         пакет документов по заявке собирают только по требованию. #}
+      <span class="muted">
+        Оба осмотра уже сделаны — первичный и повторный. Пакет документов
+        собирается по требованию: если он нужен, соберите его в блоке
+        «Формирование пакета».
+      </span>
+    {% endif %}
+  </div>
+
+  {% if inspections %}
+    <table style="margin-top:12px">
+      <thead>
+        <tr><th>№</th><th>Вид</th><th>Дата и время</th><th>Место</th><th>Результат</th><th>Снимок</th></tr>
+      </thead>
+      <tbody>
+        {% for item in inspections %}
+          <tr>
+            <td><a href="/ui/inspections/{{ item.id }}">{{ item.sequence_no }}</a></td>
+            <td>{{ "повторный" if item.inspection_kind.value == "repeat" else "первичный" }}</td>
+            <td>{{ item.started_at|dtr or "—" }}</td>
+            <td>{{ item.place_address.full_address if item.place_address else "—" }}</td>
+            <td>
+              {% if item.inspection_result %}
+                {{ "устранено" if item.inspection_result.value == "fixed" else "не устранено" }}
+              {% else %}—{% endif %}
+            </td>
+            <td>{% if item.files %}есть{% else %}нет{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted" style="margin:10px 0 0">Осмотров по заявке ещё не было.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Формирование пакета</h2>
+  {# Документы формируются по требованию. Отсутствие пакета — обычное
+     состояние заявки, а не признак незавершённости: поэтому по умолчанию
+     здесь спокойная строка и кнопка, а список «чего не хватает» появляется
+     только тогда, когда пакет действительно собирают, — то есть после
+     нажатия кнопки или на экране данных. #}
+  {% set group = document_groups[0] if document_groups else None %}
+  {% if not available_packages %}
+    <p style="margin:0">Документы по заявке не формируются.</p>
+    <p class="muted" style="margin:6px 0 0">
+      {% if details.action and details.action.inspection_kind and details.action.inspection_kind.value == "repeat" and not details.action.inspection_result %}
+        Пакет по заявке станет доступен, когда у повторного осмотра будет
+        результат.
+      {% else %}
+        Пакет по заявке станет доступен после осмотра — его делает инспектор
+        на объекте.
+      {% endif %}
+      Это не мешает работать с заявкой: осмотр, ответственный за исполнение и
+      срок исполнения нарушения заполняются без документов.
+    </p>
+  {% elif not can_build_packages %}
+    <p style="margin:0">Документы по заявке не формируются.</p>
+    <p class="muted" style="margin:6px 0 0">
+      Пакет документов по этой заявке собирает делопроизводитель.
+    </p>
+  {% else %}
+    {% if group and group.package %}
+      <p style="margin:0">Пакет собран: №{{ group.package.id }}
+        {%- if group.package.created_at %}
+          от {{ group.package.created_at.strftime("%d.%m.%Y %H:%M") }}
+        {%- endif %},
+        документов {{ group.documents|length }} — в блоке «Документы» ниже.</p>
+      <p class="muted" style="margin:6px 0 0">
+        Собрать заново можно кнопкой ниже: новый пакет заменит предыдущий в
+        списке.
+      </p>
+    {% else %}
+      <p style="margin:0">Документы по заявке не формируются.</p>
+      <p class="muted" style="margin:6px 0 0">
+        Пакет собирают, когда он нужен: {{ available_packages[0].hint }}.
+        Что для этого уже заполнено, видно на экране данных для документов.
+      </p>
+    {% endif %}
+
+    <div class="actions" style="margin-top:12px; align-items:flex-start">
+      <form method="post" action="/ui/cases/{{ case.id }}/packages" style="margin:0">
+        <input type="hidden" name="package_kind"
+               value="{{ available_packages[0].kind.code }}">
+        <button type="submit">{{ "Собрать пакет заново" if group and group.package else "Создать пакет документов" }}</button>
+      </form>
+      <a class="button ghost" href="/ui/cases/{{ case.id }}/fill">Данные для документов</a>
+    </div>
+
+    {% if show_readiness %}
+      {# Сюда попадают, когда пакет собирали, а он не собрался: показываем,
+         чего не хватает, и сразу ведём к первому незаполненному полю. #}
+      {% if readiness.is_ready %}
+        <p class="muted" style="margin:12px 0 0">
+          Все поля заполнены — пакет соберётся сразу.
+        </p>
+        {% if readiness.warnings %}
+          {# Замечания не мешают сборке: например, номер из реестра
+             контрольных мероприятий присваивает портал прокуратуры, и он
+             появляется не сразу. Документы напечатаются с пустым номером. #}
+          <div style="margin-top:8px">
+            <b>Можно собрать сейчас, но учтите:</b>
+            <ul class="issues">
+              {% for issue in readiness.warnings %}
+                <li>{{ issue.message }} —
+                  <a href="{{ issue.url }}">{{ issue.where }}</a>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      {% else %}
+        <p style="margin:12px 0 0"><b>Пакет пока не собрался: заполнены не все поля.</b>
+          Что нужно заполнить и где:</p>
+        {% if readiness.issues %}
+          <div class="actions" style="margin:8px 0 4px">
+            <a class="button" href="{{ readiness.issues[0].url }}">Перейти к заполнению</a>
+            <a class="button ghost" href="/ui/cases/{{ case.id }}/fill">Экран данных для документов</a>
+            <span class="muted">{{ readiness.issues[0].message }}</span>
+          </div>
+        {% endif %}
+        {% for issue_group, items in readiness.issues|groupby("group") %}
+          <div style="margin-top:8px"><b>{{ issue_group }}</b>
+            <ul class="issues">
+              {% for issue in items %}
+                <li>{{ issue.message }}
+                  <span class="muted">({{ issue.document }})</span> —
+                  <a href="{{ issue.url }}">{{ issue.where }}</a>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endfor %}
+        {% if readiness.missing_templates %}
+          <div style="margin-top:8px"><b>Шаблоны</b>
+            <ul class="issues">
+              {% for code in readiness.missing_templates %}
+                <li>нет шаблона документа <span class="muted">{{ code }}</span></li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+  {% endif %}
+</div>
+
+{# Номер мероприятия и QR-код выдаёт портал прокуратуры: система их не
+   создаёт, а печатает в акте и предписании. Пока данных нет, документы
+   собираются с пустым местом — пакет пересобирают, когда данные появятся. #}
+<div class="card" id="prosecutor">
+  <h2>Номер и QR-код из прокуратуры</h2>
+  <p class="muted" style="margin-top:0">
+    Номер мероприятия и QR-код формирует портал прокуратуры. Они печатаются
+    в акте и предписании, поэтому после ввода соберите пакет заново. Пока
+    данных нет, документы собираются с пустым местом.
+  </p>
+  {% if can_build_packages %}
+    <form method="post" action="/ui/cases/{{ case.id }}/prosecutor"
+          enctype="multipart/form-data">
+      <div class="grid">
+        <div><label>Номер мероприятия</label>
+          <input name="erp_number" value="{{ case.erp_number or '' }}"
+                 placeholder="48001704800001509034">
+          <div class="muted" style="font-size:12px">
+            Печатается в предписании и акте.
+            {% if case.act_number %}
+              В акте — свой номер: {{ case.act_number }}.
+            {% endif %}
+          </div>
+        </div>
+        <div><label>QR-код (картинка с портала прокуратуры)</label>
+          <input type="file" name="qr" accept="image/*"></div>
+      </div>
+      <div class="actions" style="margin-top:8px">
+        <button type="submit">Сохранить</button>
+        {% if case.qr_file %}
+          <a class="button ghost" href="/ui/cases/{{ case.id }}/qr" target="_blank">Открыть QR-код</a>
+        {% endif %}
+      </div>
+    </form>
+    {% if case.qr_file %}
+      <div style="margin-top:10px">
+        {# Отпечаток в адресе: после замены кода браузер не покажет старый. #}
+        <img src="/ui/cases/{{ case.id }}/qr?v={{ case.qr_file.sha256[:12] if case.qr_file.sha256 else '' }}"
+             alt="QR-код из прокуратуры"
+             style="width:3.39cm;height:3.39cm;border:1px solid var(--line)">
+      </div>
+      <form method="post" action="/ui/cases/{{ case.id }}/prosecutor" style="margin-top:6px">
+        <input type="hidden" name="erp_number" value="{{ case.erp_number or '' }}">
+        <input type="hidden" name="remove_qr" value="1">
+        <button type="submit" class="button ghost">Убрать QR-код</button>
+      </form>
+    {% else %}
+      <p class="muted" style="margin:10px 0 0">
+        QR-код не загружен — в бланках останется зарезервированное место.
+      </p>
+    {% endif %}
+  {% else %}
+    <div class="grid">
+      <div><label>Номер мероприятия</label>{{ case.erp_number or "—" }}</div>
+      <div><label>QR-код</label>
+        {% if case.qr_file %}загружен{% else %}—{% endif %}</div>
+    </div>
+  {% endif %}
+</div>
+
+{# Данные административного производства нужны только вторичному пакету:
+   он собирается, когда повторный осмотр показал, что нарушение не устранено. #}
+{% if show_administrative %}
+<div class="card" id="administrative">
+  <h3>Административное производство</h3>
+  <p class="muted" style="margin-top:0">
+    Нужно для вторичного пакета: уведомление о явке и протокол об
+    административном правонарушении. Если поля не заполнены, эти документы
+    не соберутся.
+  </p>
+  <form method="post" action="/ui/cases/{{ case.id }}/administrative">
+    <div class="grid">
+      <div><label>Номер протокола</label>
+        <input name="protocol_number" value="{{ administrative.protocol_number or '' if administrative else '' }}"></div>
+      <div><label>Дата протокола</label>
+        <input type="date" name="protocol_date"
+               value="{{ administrative.protocol_date.isoformat() if administrative and administrative.protocol_date else '' }}"></div>
+      {# Место составления протокола — адрес управы из справочника. Если ничего
+         не выбрано, подставляется адрес управы заявки или адрес департамента. #}
+      <div><label>Место составления протокола</label>
+        <select name="protocol_place">
+          <option value="">— адрес управы (по умолчанию) —</option>
+          {% for address in protocol_place_options %}
+            <option value="{{ address.full_address }}" {% if administrative and administrative.protocol_place == address.full_address %}selected{% endif %}>{{ address.full_address }}</option>
+          {% endfor %}
+          {% if administrative and administrative.protocol_place and administrative.protocol_place not in protocol_place_options|map(attribute='full_address')|list %}
+            <option value="{{ administrative.protocol_place }}" selected>{{ administrative.protocol_place }}</option>
+          {% endif %}
+        </select></div>
+      <div><label>Статья КоАП</label>
+        <input name="offense_article" value="{{ administrative.offense_article or 'частью 1 статьи 19.5' if administrative else 'частью 1 статьи 19.5' }}"></div>
+      <div><label>Дата явки для составления протокола</label>
+        <input type="date" name="appearance_date"
+               value="{{ administrative.appearance_date.isoformat() if administrative and administrative.appearance_date else '' }}"></div>
+      <div><label>Время явки</label>
+        <input name="appearance_time" value="{{ administrative.appearance_time or '' if administrative else '' }}"
+               placeholder="11:30"></div>
+      {# Место явки и кабинет не заполняются: они принадлежат управе, по чьей
+         территории заявка, и подставляются из её карточки. #}
+<div><label>Номер уведомления</label>
+        <input name="notice_number" value="{{ administrative.notice_number or '' if administrative else '' }}"></div>
+      <div><label>Дата уведомления</label>
+        <input type="date" name="notice_date"
+               value="{{ administrative.notice_date.isoformat() if administrative and administrative.notice_date else '' }}"></div>
+      <div><label>Дата правонарушения</label>
+        <input type="date" name="offense_date"
+               value="{{ administrative.offense_date.isoformat() if administrative and administrative.offense_date else '' }}"></div>
+      <div><label>Время правонарушения</label>
+        <input name="offense_time" value="{{ administrative.offense_time or '' if administrative else '' }}"
+               placeholder="00:01"></div>
+      {# Место правонарушения по ст. 19.5 — адрес объекта. Если оставить
+         пустым, подставится адрес объекта контроля. #}
+      <div><label>Место правонарушения</label>
+        <input name="offense_place" value="{{ administrative.offense_place or '' if administrative else '' }}"
+               placeholder="{{ control_object_address or 'как адрес объекта контроля' }}"></div>
+      <div><label>Иные сведения (кто присутствовал)</label>
+        <input name="representative_info" value="{{ administrative.representative_info or '' if administrative else '' }}"></div>
+    </div>
+    <div class="row"><label>Ранее выданное предписание (неисполнение которого описывает протокол)</label></div>
+    <div class="grid">
+      <div><label>Номер предписания</label>
+        <input name="prior_prescription_number"
+               value="{{ administrative.prior_prescription_number or '' if administrative else '' }}"
+               placeholder="48001704800001209198"></div>
+      <div><label>Дата предписания</label>
+        <input type="date" name="prior_prescription_date"
+               value="{{ administrative.prior_prescription_date.isoformat() if administrative and administrative.prior_prescription_date else '' }}"></div>
+      <div><label>Срок исполнения предписания</label>
+        <input type="date" name="prior_prescription_due"
+               value="{{ administrative.prior_prescription_due.isoformat() if administrative and administrative.prior_prescription_due else '' }}"></div>
+      <div><label>Норма, по которой выдано</label>
+        <input name="prior_prescription_basis"
+               value="{{ administrative.prior_prescription_basis or '' if administrative else '' }}"
+               placeholder="части 1,2 статьи 4"></div>
+    </div>
+    {# Событие правонарушения не вводится текстом: оно собирается из дат наших
+       документов — когда проводилось прежнее мероприятие, какой срок был дан
+       на исполнение предписания. Ниже видно, что попадёт в протокол. #}
+    <div class="row"><label>Событие правонарушения (собирается из дат выше)</label>
+      {% if administrative_circumstances %}
+        <div class="muted" style="font-size:13px">{{ administrative_circumstances }}</div>
+      {% else %}
+        <div class="muted" style="font-size:13px">
+          Заполните дату предписания и срок его исполнения — текст соберётся сам.
+        </div>
+      {% endif %}
+    </div>
+    <div class="row"><label>Отметка о неявке (если пусто — соберётся из даты, времени и места явки)</label>
+      <textarea name="appearance_note">{{ administrative.appearance_note or '' if administrative else '' }}</textarea></div>
+    {# Поле «Приложение» не заполняется: это всегда акт и протокол осмотра
+       нашего мероприятия. Текст с датой собирается в документе, а здесь
+       показано, что попадёт в протокол. #}
+    <div class="row"><label>Приложение (собирается само)</label>
+      <div class="muted" style="font-size:13px">
+        {{ administrative_appendix_default or 'акт выездного обследования и протокол осмотра' }}
+      </div>
+    </div>
+    <div class="actions"><button type="submit">Сохранить данные производства</button></div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Документы</h2>
+  <p class="muted" style="margin-top:0">
+    Пакеты по видам. Раскройте нужный — внутри документы последнего
+    собранного пакета этого вида: их можно скачать по одному или забрать
+    пакет целиком одним архивом.
+  </p>
+
+  {% for group in document_groups %}
+    <details class="package" {% if group.documents and package and group.package.id == package.id %}open{% endif %}>
+      <summary>
+        <b>{{ group.kind.name }}</b>
+        {% if group.package %}
+          <span class="muted">
+            · пакет №{{ group.package.id }}
+            {%- if group.package.created_at %}
+              от {{ group.package.created_at.strftime("%d.%m.%Y %H:%M") }}
+            {%- endif %}
+            · документов {{ group.documents|length }}
+          </span>
+        {% else %}
+          <span class="muted">· ещё не сформирован</span>
+        {% endif %}
+      </summary>
+
+      {% if group.documents %}
+        <div class="actions" style="margin:10px 0">
+          <a class="button secondary" href="/api/packages/{{ group.package.id }}/archive">
+            Скачать пакет архивом
+          </a>
+        </div>
+        <table>
+          <thead>
+          <tr>
+            <th style="width:50px">№</th>
+            <th>Документ</th>
+            <th style="width:170px">Номер</th>
+            <th style="width:105px">Дата</th>
+            <th style="width:120px">Листов</th>
+            <th style="width:110px">Файл</th>
+          </tr>
+          </thead>
+          <tbody>
+          {% for document in group.documents %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ document.document_type.name }}</td>
+              <td>{{ document.number or "—" }}</td>
+              <td>{{ document.document_date|dtr or "—" }}</td>
+              <td>
+                <form method="post" action="/ui/documents/{{ document.id }}/pages"
+                      style="margin:0; display:flex; gap:4px">
+                  <input name="pages" value="{{ document.pages or '' }}" size="3"
+                         placeholder="—" style="width:56px">
+                  <button type="submit" class="button ghost" style="padding:4px 8px">ок</button>
+                </form>
+              </td>
+              <td><a href="/api/documents/{{ document.id }}/file">скачать</a></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted" style="margin:10px 0 0">
+          Пакет этого вида по заявке ещё не собирался.
+        </p>
+      {% endif %}
+    </details>
+  {% endfor %}
+
+  {% if package %}
+    <div class="actions" style="margin-top:14px">
+      {# Кнопка показывается скриптом: сохранение в папку умеют не все браузеры,
+         и в остальных оператор просто скачивает архив. #}
+      <button type="button" class="button ghost" id="save-to-folder"
+              data-package="{{ package.id }}" hidden>Сохранить в папку: {{ package.package_kind.name }}</button>
+      <span class="muted" id="save-status"></span>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+// Сохранение документов пакета в выбранную папку.
+//
+// Браузер спрашивает папку один раз, дальше файлы записываются прямо в неё —
+// распаковывать архив не нужно. Имена файлов и опись те же, что в архиве.
+// Если браузер не умеет работать с папками, кнопка не показывается, а на её
+// месте появляется пояснение: остаётся обычное скачивание архива.
+(function () {
+  const button = document.getElementById('save-to-folder');
+  if (!button) { return; }
+  const status = document.getElementById('save-status');
+
+  if (typeof window.showDirectoryPicker !== 'function') {
+    status.textContent =
+      'Этот браузер не умеет сохранять в папку — скачайте пакет архивом.';
+    return;
+  }
+  button.hidden = false;
+
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    status.style.color = '';
+    // Сообщение появляется сразу: иначе непонятно, нажалась кнопка или нет.
+    status.textContent = 'Готовлю список документов…';
+    try {
+      const listResponse = await fetch(`/api/packages/${button.dataset.package}/files`);
+      if (!listResponse.ok) { throw new Error('не удалось получить список файлов'); }
+      const listing = await listResponse.json();
+
+      status.textContent = 'Выберите папку для сохранения…';
+      const folder = await window.showDirectoryPicker({ mode: 'readwrite' });
+
+      let saved = 0;
+      for (const file of listing.files) {
+        status.textContent =
+          `Сохраняю ${saved + 1} из ${listing.files.length}: ${file.name}`;
+        const response = await fetch(file.url);
+        if (!response.ok) { throw new Error(`не удалось скачать ${file.name}`); }
+        const handle = await folder.getFileHandle(file.name, { create: true });
+        const writable = await handle.createWritable();
+        await writable.write(await response.blob());
+        await writable.close();
+        saved += 1;
+      }
+
+      status.style.color = '#2e7d32';
+      status.textContent = `Сохранено документов: ${saved}`;
+    } catch (error) {
+      // Ошибку видно и в строке состояния, и в консоли браузера.
+      console.error('Сохранение в папку:', error);
+      status.style.color = '#c62828';
+      status.textContent = error.name === 'AbortError'
+        ? 'Сохранение отменено'
+        : 'Не удалось сохранить: ' + error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+})();
+</script>
+
+{% endblock %}

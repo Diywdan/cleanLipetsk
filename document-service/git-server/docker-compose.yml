@@ -1,0 +1,69 @@
+# Git-сервер проекта: Forgejo (лёгкий self-hosted git с веб-интерфейсом).
+#
+# Зачем отдельный compose: приложение и его данные живут своей жизнью, а
+# репозитории — своей. Общая у них только docker-сеть, чтобы nginx из
+# приложения мог проксировать запросы к git.
+#
+# Наружу git-сервер смотрит через nginx приложения на своём порту:
+#   https://82.202.140.51:8443/
+# Порт 8443 открыт в файрволе провайдера; старые ссылки вида /git/ на 443
+# переадресуются сюда. Когда появится домен, git удобно вынести на отдельное
+# имя (git.домен) — сам Forgejo от адреса не зависит, меняются только
+# ROOT_URL и блок в nginx.
+#
+# Запуск:
+#   docker compose -f git-server/docker-compose.yml up -d
+
+services:
+  forgejo:
+    # Версия закреплена: обновление — отдельное осознанное действие.
+    # Порядок обновления описан в README рядом с этим файлом.
+    image: codeberg.org/forgejo/forgejo:16.0.6
+    container_name: forgejo
+    restart: unless-stopped
+
+    environment:
+      # Данные должны принадлежать deploy (uid 1003): иначе файлы репозиториев
+      # создаст root, и с хоста их не будет видно без sudo.
+      USER_UID: "1003"
+      USER_GID: "1003"
+
+      # Внешний адрес. ROOT_URL обязан совпадать с тем, что видит браузер:
+      # из него Forgejo собирает ссылки для клонирования.
+      FORGEJO__server__PROTOCOL: http
+      FORGEJO__server__DOMAIN: "82.202.140.51:8443"
+      FORGEJO__server__ROOT_URL: "https://82.202.140.51:8443/"
+      FORGEJO__server__HTTP_PORT: "3000"
+      FORGEJO__server__OFFLINE_MODE: "true"
+
+      # SSH для git не поднимаем: и клонирование, и push идут по HTTPS, а
+      # ssh-доступ к серверу остаётся только у администратора.
+      FORGEJO__server__DISABLE_SSH: "true"
+      FORGEJO__server__START_SSH_SERVER: "false"
+
+      # Репозиториев немного — отдельная база данных им не нужна.
+      FORGEJO__database__DB_TYPE: sqlite3
+      FORGEJO__database__PATH: /data/gitea/forgejo.db
+
+      # Первичная настройка через браузер не нужна: всё задано здесь.
+      FORGEJO__security__INSTALL_LOCK: "true"
+
+      # Учётные записи заводит администратор, посторонние не регистрируются.
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      # Репозитории не видны без входа: код проекта — не публичная страница.
+      FORGEJO__service__REQUIRE_SIGNIN_VIEW: "true"
+      FORGEJO__repository__DEFAULT_PRIVATE: private
+
+    volumes:
+      - /home/deploy/git/data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
+    networks:
+      - document-service
+
+networks:
+  # Сеть приложения: в ней же стоит nginx, который проксирует git.
+  document-service:
+    external: true
+    name: document-service_document-service-network

@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: document-service-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - document-service-network
+
+  backend:
+    build:
+      context: ./backend
+
+    container_name: document-service-backend
+    restart: unless-stopped
+
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB}
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      CRM_INTEGRATION_TOKEN: ${CRM_DOCUMENT_SERVICE_TOKEN:-}
+      CRM_EVENT_URL: ${CRM_EVENT_URL:-http://chisto-crm:8000/api/v1/internal/document-service/events}
+      # Показывать инспектору только заявки по адресам его управа.
+      # Включается значением true в .env; по умолчанию выключено, чтобы
+      # незаполненные управи не скрыли от инспектора все заявки.
+      RESTRICT_CASES_BY_uprava: ${RESTRICT_CASES_BY_uprava:-false}
+
+    # Код монтируется с хоста: alembic autogenerate пишет файл миграции
+    # сразу в каталог проекта, и правки не требуют пересборки образа.
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+    # Порт публикуется только на loopback хоста. Снаружи он закрыт (UFW),
+    # поэтому оператор попадает в систему через SSH-туннель:
+    #   ssh -N -L 8080:127.0.0.1:8000 deploy@82.202.140.51
+    # а затем открывает http://127.0.0.1:8080/ui
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - document-service-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: document-service-nginx
+    restart: unless-stopped
+
+    # Наружу открываются веб-порты:
+    #   80/443 — приложение,
+    #   8443   — git-сервер проекта (Forgejo, см. git-server/docker-compose.yml).
+    # Backend остаётся во внутренней сети, а на loopback хоста опубликован
+    # для SSH-туннеля (см. ниже).
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8443:8443"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/www:/var/www/certbot
+      - ./nginx/certs:/etc/letsencrypt:ro
+      # Сборка интерфейса диспетчера (SPA): отдаётся по адресу /dispatch/.
+      - ./dispatch:/usr/share/nginx/html/dispatch:ro
+
+    depends_on:
+      - backend
+
+    networks:
+      - document-service-network
+
+networks:
+  document-service-network:
+    name: chisto-document-service
+    driver: bridge
+
+volumes:
+  postgres_data:

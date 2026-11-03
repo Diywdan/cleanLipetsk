@@ -1,0 +1,94 @@
+{# Работы по нарушению: работа из справочника и её объём.
+
+   Общий блок для карточки заявки и страницы осмотра: в обоих местах работы
+   вводятся одинаково, и из них собираются описание нарушения и требование.
+   Список работ сужается до выбранного вида нарушения. #}
+<div id="violation-works">
+  <div class="muted" style="font-weight:400; margin-bottom:6px">
+    Список сужается до работ выбранного вида нарушения. Объём вводится один
+    раз — он попадёт и в описание нарушения, и в требование предписания.
+  </div>
+</div>
+<template id="work-row-template">
+  <div class="work-row" style="display:flex; gap:8px; margin-bottom:6px; align-items:center">
+    <select name="violation_work_ids" style="flex:1">
+      <option value="">— выберите работу —</option>
+      {% for item in works %}
+        <option value="{{ item.id }}"
+                data-kinds="{{ work_kinds.get(item.id, [])|join(',') }}"
+                data-unit="{{ item.unit }}">{{ item.name }}</option>
+      {% endfor %}
+    </select>
+    <input name="violation_work_quantities" placeholder="объём" style="width:110px">
+    <span class="work-unit muted" style="width:60px; font-size:12px"></span>
+    <button type="button" class="work-remove"
+            style="padding:2px 8px" title="убрать строку">×</button>
+  </div>
+</template>
+<button type="button" id="add-work-row" style="padding:4px 10px">добавить работу</button>
+<div class="muted" id="works-hint" style="margin-top:6px; font-size:12px"></div>
+<script>
+(function () {
+  const kind = document.querySelector('[name="violation_type_id"]');
+  const box = document.getElementById('violation-works');
+  const template = document.getElementById('work-row-template');
+  const addButton = document.getElementById('add-work-row');
+  const hint = document.getElementById('works-hint');
+  if (!kind || !box || !template) { return; }
+  const existing = {{ violation_works|tojson }};
+
+  function addRow(workId, quantity) {
+    const row = template.content.firstElementChild.cloneNode(true);
+    const select = row.querySelector('select');
+    const input = row.querySelector('input');
+    const unit = row.querySelector('.work-unit');
+    if (workId) { select.value = String(workId); }
+    if (quantity !== undefined && quantity !== null && quantity !== '') {
+      input.value = quantity;
+    }
+    function syncUnit() {
+      const option = select.options[select.selectedIndex];
+      unit.textContent = option && option.dataset.unit ? option.dataset.unit : '';
+    }
+    select.addEventListener('change', function () { syncUnit(); apply(); });
+    row.querySelector('.work-remove').addEventListener('click', function () {
+      row.remove();
+      apply();
+    });
+    box.appendChild(row);
+    syncUnit();
+    return row;
+  }
+
+  function apply() {
+    const kindId = kind.value;
+    for (const row of box.querySelectorAll('.work-row')) {
+      const select = row.querySelector('select');
+      const current = select.value;
+      for (const option of select.options) {
+        if (!option.value) { continue; }
+        const kinds = (option.dataset.kinds || '').split(',').filter(Boolean);
+        const linked = kindId !== '' && kinds.includes(kindId);
+        // Выбранную работу не прячем: иначе она молча сбросится.
+        const keep = option.value === current || kindId === '' || linked;
+        option.hidden = !keep;
+        option.style.display = keep ? '' : 'none';
+        option.disabled = !keep;
+      }
+    }
+    hint.textContent = kindId === ''
+      ? 'Вид нарушения не выбран — показаны все работы справочника.'
+      : 'Показаны работы этого вида нарушения.';
+  }
+
+  addButton.addEventListener('click', function () { addRow(); apply(); });
+  kind.addEventListener('change', apply);
+
+  if (existing.length > 0) {
+    for (const item of existing) { addRow(item.work_id, item.quantity); }
+  } else {
+    addRow();
+  }
+  apply();
+})();
+</script>

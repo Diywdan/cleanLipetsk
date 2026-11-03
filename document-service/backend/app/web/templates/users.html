@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Пользователи{% endblock %}
+{% block content %}
+
+<h2>Пользователи</h2>
+<p class="muted">Раздел администратора: заведение операторов, смена паролей,
+  блокировка и контроль активных сессий.</p>
+
+<div class="card">
+  <h3>Список ({{ users|length }})</h3>
+  <table>
+    <thead>
+    <tr>
+      <th style="width:50px">№</th>
+      <th>ФИО</th>
+      <th style="width:200px">Почта (логин)</th>
+      <th style="width:200px">Роли</th>
+      <th style="width:200px">Сотрудник (управа)</th>
+      <th style="width:110px">Состояние</th>
+      <th style="width:230px">Новый пароль</th>
+      <th style="width:130px">Доступ</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for item in users %}
+      <tr>
+        <td>{{ item.id }}</td>
+        <td>{{ item.full_name }}
+          {% if item.position %}<div class="muted">{{ item.position }}</div>{% endif %}
+        </td>
+        <td>{{ item.email or "—" }}</td>
+        <td>
+          {% for link in item.roles %}
+            <div>
+              {{ link.role.name if link.role else "—" }}
+              <form method="post"
+                    action="/ui/users/{{ item.id }}/roles/{{ link.id }}/delete"
+                    style="display:inline">
+                <button type="submit" class="button ghost"
+                        style="padding:1px 6px; font-size:12px">×</button>
+              </form>
+            </div>
+          {% else %}
+            <span class="muted">ролей нет</span>
+          {% endfor %}
+          <form method="post" action="/ui/users/{{ item.id }}/roles"
+                style="margin-top:6px; display:flex; gap:4px">
+            <select name="role_code" style="width:auto">
+              {% for role in roles %}<option value="{{ role.code }}">{{ role.name }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="button ghost" style="padding:4px 8px">+</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="/ui/users/{{ item.id }}/inspector"
+                style="display:flex; gap:4px">
+            <select name="inspector_id" style="width:auto">
+              <option value="">— не связан —</option>
+              {% for person in inspectors %}
+                <option value="{{ person.id }}" {% if inspector_by_user.get(item.id) == person.id %}selected{% endif %}>
+                  {{ person.full_name }}
+                </option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="button ghost" style="padding:4px 8px">ок</button>
+          </form>
+        </td>
+        <td>{{ "работает" if item.is_active else "заблокирован" }}</td>
+        <td>
+          <form method="post" action="/ui/users/{{ item.id }}/password"
+                style="display:flex; gap:4px">
+            <input name="password" type="text" placeholder="не короче 8 знаков">
+            <button type="submit" class="button ghost" style="padding:4px 8px">ок</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="/ui/users/{{ item.id }}/active">
+            <input type="hidden" name="is_active" value="{{ '0' if item.is_active else '1' }}">
+            <button type="submit" class="button ghost" style="padding:4px 8px">
+              {{ "Заблокировать" if item.is_active else "Разблокировать" }}
+            </button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Новый пользователь</h3>
+  <form method="post" action="/ui/users">
+    <div class="grid">
+      <div><label>ФИО *</label><input name="full_name" required></div>
+      <div><label>Электронная почта (логин) *</label>
+        <input name="email" type="email" required></div>
+      <div><label>Должность</label><input name="position"></div>
+      <div><label>Телефон</label><input name="phone"></div>
+      <div><label>Пароль * (не короче 8 знаков)</label>
+        <input name="password" type="text" required></div>
+      <div><label>Роль</label>
+        <select name="role_code">
+          {% for role in roles %}<option value="{{ role.code }}">{{ role.name }}</option>{% endfor %}
+        </select></div>
+    </div>
+    <div class="actions" style="margin-top:10px"><button type="submit">Создать пользователя</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Активные сессии ({{ sessions|length }})</h3>
+  <table>
+    <thead>
+    <tr><th style="width:50px">№</th><th>Пользователь</th><th>Адрес</th>
+        <th>Браузер</th><th>Последняя активность</th><th>Действует до</th>
+        <th style="width:110px"></th></tr>
+    </thead>
+    <tbody>
+    {% for session in sessions %}
+      <tr>
+        <td>{{ session.id }}</td>
+        <td>{{ session.user.full_name if session.user else "—" }}</td>
+        <td>{{ session.ip_address or "—" }}</td>
+        <td class="muted" style="max-width:280px; overflow:hidden">
+          {{ session.user_agent or "—" }}</td>
+        <td>{{ session.last_seen_at|dtr or "—" }}</td>
+        <td>{{ session.expires_at|dtr }}</td>
+        <td>
+          <form method="post" action="/ui/sessions/{{ session.id }}/revoke">
+            <button type="submit" class="button ghost" style="padding:4px 8px">Закрыть</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">Активных сессий нет</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

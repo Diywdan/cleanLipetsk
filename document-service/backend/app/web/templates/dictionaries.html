@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% block title %}Справочники{% endblock %}
+{% block content %}
+
+{#
+  Кнопка «Удалить»: неиспользуемое значение удаляется, используемое уходит
+  в архив — на него ссылаются уже созданные заявки и документы.
+#}
+{% macro value_actions(kind, item) %}
+<form method="post"
+      action="/ui/dictionaries/{{ kind }}/{{ item.id }}/{{ 'restore' if is_archived(item) else 'delete' }}"
+      style="display:inline; margin-left:6px">
+  <button type="submit" class="button ghost" style="padding:2px 8px">
+    {{ "Вернуть" if is_archived(item) else "Удалить" }}
+  </button>
+</form>
+{% endmacro %}
+
+<h2>Справочники</h2>
+<p class="muted">Данные, из которых складываются документы: организации, подразделения,
+  инспекторы, утверждающие лица, адреса и объекты контроля. Любое значение можно
+  поправить: раскройте «Изменить» в строке. Значения можно добавлять и прямо
+  из формы заявки, не уходя со страницы.</p>
+
+<div class="card">
+  <h3>Организации ({{ organizations|length }})</h3>
+  <table>
+    <thead><tr><th style="width:50px">№</th><th>Краткое наименование</th><th>ИНН</th>
+      <th>КПП</th><th>Вид</th><th style="width:110px"></th></tr></thead>
+    <tbody>
+    {% for item in organizations %}
+      <tr {% if is_archived(item) %}style="background:#f7f7f9; color:#6b7280"{% endif %}>
+        <td>{{ item.id }}</td>
+        <td><a href="/ui/dictionaries/organizations/{{ item.id }}">{{ item.short_name }}</a>
+          {% if is_archived(item) %}<span class="muted">— в архиве</span>{% endif %}
+          <details class="edit"><summary>Изменить</summary>
+            <div>
+              <form method="post" action="/ui/dictionaries/organizations">
+                <input type="hidden" name="id" value="{{ item.id }}">
+                <div class="grid">
+                  <div><label>Краткое наименование</label>
+                    <input name="short_name" value="{{ item.short_name }}"></div>
+                  <div><label>Полное наименование</label>
+                    <input name="full_name" value="{{ item.full_name or '' }}"></div>
+                  <div><label>Вид</label>
+                    <select name="kind">
+                      {% for kind in ["legal_entity", "entrepreneur", "individual"] %}
+                        <option value="{{ kind }}" {% if item.kind.value == kind %}selected{% endif %}>{{ kind }}</option>
+                      {% endfor %}
+                    </select></div>
+                  <div><label>ИНН</label><input name="inn" value="{{ item.inn or '' }}"></div>
+                  <div><label>КПП</label><input name="kpp" value="{{ item.kpp or '' }}"></div>
+                  <div><label>ОГРН</label><input name="ogrn" value="{{ item.ogrn or '' }}"></div>
+                </div>
+                <div class="actions" style="margin-top:8px">
+                  <button type="submit" class="button ghost">Сохранить</button>
+                </div>
+              </form>
+            </div>
+          </details>
+        </td>
+        <td>{{ item.inn or "—" }}</td>
+        <td>{{ item.kpp or "—" }}</td>
+        <td>{{ item.kind.value }}</td>
+        <td><a href="/ui/dictionaries/organizations/{{ item.id }}">реквизиты, филиалы →</a>
+          {{ value_actions("organizations", item) }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">Пусто</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/ui/dictionaries/organizations" style="margin-top:12px">
+    <div class="grid">
+      <div><label>Краткое наименование *</label><input name="short_name" required></div>
+      <div><label>Полное наименование</label><input name="full_name"></div>
+      <div><label>Вид</label>
+        <select name="kind">
+          <option value="legal_entity">юридическое лицо</option>
+          <option value="entrepreneur">индивидуальный предприниматель</option>
+          <option value="individual">физическое лицо</option>
+        </select></div>
+      <div><label>ИНН</label><input name="inn"></div>
+      <div><label>КПП</label><input name="kpp"></div>
+      <div><label>ОГРН</label><input name="ogrn"></div>
+      <div><label>Юридический адрес</label>
+        <input name="legal_address" list="address-options"
+               placeholder="введите адрес строкой"></div>
+      <div><label>Электронная почта для отправки документов</label>
+        <input name="email" placeholder="например, info@example.ru"></div>
+    </div>
+    <p class="muted" style="margin:8px 0 0">
+      Реквизиты и почта заводятся сразу — без них пакет по заявке с этой организацией
+      не соберётся. Филиалы и представители добавляются в карточке организации.
+    </p>
+    <div class="actions" style="margin-top:10px"><button type="submit">Добавить организацию</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Инспекторы ({{ inspectors|length }})</h3>
+  <table>
+    <thead><tr><th style="width:50px">№</th><th>ФИО</th><th>Должность</th>
+      <th>Творительный падеж</th><th>Телефон</th><th>Почта</th></tr></thead>
+    <tbody>
+    {% for item in inspectors %}
+      <tr {% if is_archived(item) %}style="background:#f7f7f9; color:#6b7280"{% endif %}>
+        <td>{{ item.id }}</td>
+        <td>{{ item.full_name }}
+          <details class="edit"><summary>Изменить</summary>
+            <div>
+              <form method="post" action="/ui/dictionaries/inspectors">
+                <input type="hidden" name="id" value="{{ item.id }}">
+                <div class="grid">
+                  <div><label>ФИО</label><input name="full_name" value="{{ item.full_name }}"></div>
+                  <div><label>Должность</label><input name="position" value="{{ item.position }}"></div>
+                  <div><label>Должность в творительном падеже</label>
+                    <input name="position_instrumental" value="{{ item.position_instrumental or '' }}"></div>
+                  <div><label>ФИО в творительном падеже</label>
+                    <input name="full_name_instrumental" value="{{ item.full_name_instrumental or '' }}"></div>
+                  <div><label>Телефон</label><input name="phone" value="{{ item.phone or '' }}"></div>
+                  <div><label>Почта</label><input name="email" value="{{ item.email or '' }}"></div>
+                </div>
+                <div class="actions" style="margin-top:8px">
+                  <button type="submit" class="button ghost">Сохранить</button>
+                </div>
+              </form>
+            </div>
+          </details>
+        </td>
+        <td>{{ item.position }}</td>
+        <td class="muted">{{ item.position_instrumental or "—" }}</td>
+        <td>{{ item.phone or "—" }}</td>
+        <td>{{ item.email or "—" }}{{ value_actions("inspectors", item) }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">Пусто</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/ui/dictionaries/inspectors" style="margin-top:12px">
+    <div class="grid">
+      <div><label>ФИО *</label><input name="full_name" required></div>
+      <div><label>Должность *</label><input name="position" required></div>
+      <div><label>Должность в творительном падеже (для протокола)</label>
+        <input name="position_instrumental" placeholder="Главным консультантом …"></div>
+      <div><label>ФИО в творительном падеже</label>
+        <input name="full_name_instrumental" placeholder="Комолых Евгенией Юрьевной"></div>
+      <div><label>Телефон</label><input name="phone"></div>
+      <div><label>Электронная почта</label><input name="email"></div>
+    </div>
+    <div class="actions" style="margin-top:10px"><button type="submit">Добавить инспектора</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Утверждающие лица органа контроля ({{ signatories|length }})</h3>
+  <table>
+    <thead><tr><th style="width:50px">№</th><th>ФИО</th><th>Должность</th>
+      <th>Родительный падеж</th><th>Подпись в родительном</th></tr></thead>
+    <tbody>
+    {% for item in signatories %}
+      <tr {% if is_archived(item) %}style="background:#f7f7f9; color:#6b7280"{% endif %}>
+        <td>{{ item.id }}</td>
+        <td>{{ item.full_name }}
+          <details class="edit"><summary>Изменить</summary>
+            <div>
+              <form method="post" action="/ui/dictionaries/signatories">
+                <input type="hidden" name="id" value="{{ item.id }}">
+                <div class="grid">
+                  <div><label>Орган контроля</label>
+                    <select name="control_body_id">
+                      {% for body in control_bodies %}
+                        <option value="{{ body.id }}" {% if item.control_body_id == body.id %}selected{% endif %}>{{ body.name }}</option>
+                      {% endfor %}
+                    </select></div>
+                  <div><label>ФИО</label><input name="full_name" value="{{ item.full_name }}"></div>
+                  <div><label>Должность</label><input name="position" value="{{ item.position }}"></div>
+                  <div><label>Должность в родительном падеже</label>
+                    <input name="position_genitive" value="{{ item.position_genitive or '' }}"></div>
+                  <div><label>Подпись в родительном падеже</label>
+                    <input name="short_name_genitive" value="{{ item.short_name_genitive or '' }}"></div>
+                </div>
+                <div class="actions" style="margin-top:8px">
+                  <button type="submit" class="button ghost">Сохранить</button>
+                </div>
+              </form>
+            </div>
+          </details>
+        </td>
+        <td>{{ item.position }}</td>
+        <td class="muted">{{ item.position_genitive or "—" }}</td>
+        <td>{{ item.short_name_genitive or "—" }}{{ value_actions("signatories", item) }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">Пусто</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/ui/dictionaries/signatories" style="margin-top:12px">
+    <div class="grid">
+      <div><label>Орган контроля *</label>
+        <select name="control_body_id" required>
+          {% for item in control_bodies %}<option value="{{ item.id }}">{{ item.name }}</option>{% endfor %}
+        </select></div>
+      <div><label>ФИО *</label><input name="full_name" required></div>
+      <div><label>Должность *</label><input name="position" required></div>
+      <div><label>Должность в родительном падеже</label>
+        <input name="position_genitive" placeholder="заместителя председателя департамента …"></div>
+      <div><label>Подпись в родительном падеже</label>
+        <input name="short_name_genitive" placeholder="Инютиной Т.Н."></div>
+      <div><label>Действует с</label><input type="date" name="valid_from"></div>
+    </div>
+    <div class="actions" style="margin-top:10px"><button type="submit">Добавить подписанта</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Адреса</h3>
+  <p class="muted" style="margin-top:0">
+    Адрес вводится строкой прямо в заявке и заводится здесь сам — отдельным шагом
+    его создавать не нужно. Здесь адреса можно найти и поправить.
+    Всего адресов: {{ addresses_total }}, показано {{ addresses|length }}.
+  </p>
+  <form method="get" action="/ui/dictionaries" class="actions" style="margin-bottom:10px">
+    <input name="q" value="{{ address_query }}" placeholder="улица, дом или часть адреса"
+           style="max-width:340px">
+    <button type="submit">Найти</button>
+    {% if address_query %}<a class="button ghost" href="/ui/dictionaries">Сбросить</a>{% endif %}
+  </form>
+  <table>
+    <thead><tr><th style="width:50px">№</th><th>Адрес</th><th>Индекс</th>
+      <th>Улица</th><th>Дом</th><th style="width:150px">Координаты</th><th style="width:90px"></th></tr></thead>
+    <tbody>
+    {% for item in addresses %}
+      <tr {% if is_archived(item) %}style="background:#f7f7f9; color:#6b7280"{% endif %}>
+        <td>{{ item.id }}</td>
+        <td>{{ item.full_address }}{% if is_archived(item) %} <span class="muted">— в архиве</span>{% endif %}</td>
+        <td>{{ item.postal_code or "—" }}</td>
+        <td>{{ item.street or "—" }}</td>
+        <td>{{ item.house or "—" }}</td>
+        {# Координаты видно в списке: сразу понятно, у каких адресов их нет —
+           без них обращение не встанет на карту в интерфейсе диспетчера. #}
+        <td>{% if item.latitude is not none and item.longitude is not none %}
+              <span class="muted">{{ item.latitude }}, {{ item.longitude }}</span>
+            {% else %}
+              <span class="muted">не заданы</span>
+            {% endif %}</td>
+        <td>
+          <details class="edit"><summary>Изменить</summary>
+            <div>
+              <form method="post" action="/ui/dictionaries/addresses">
+                <input type="hidden" name="id" value="{{ item.id }}">
+                <div class="grid">
+                  <div><label>Адрес одной строкой</label>
+                    <input name="full_address" value="{{ item.full_address }}"></div>
+                  <div><label>Индекс</label><input name="postal_code" value="{{ item.postal_code or '' }}"></div>
+                  <div><label>Населённый пункт</label><input name="locality" value="{{ item.locality or '' }}"></div>
+                  <div><label>Улица</label><input name="street" value="{{ item.street or '' }}"></div>
+                  <div><label>Дом</label><input name="house" value="{{ item.house or '' }}"></div>
+                  {# Координаты: по ним обращение встаёт на карту в интерфейсе
+                     диспетчера. Берутся из Яндекс Карт: правый клик по точке —
+                     «Что здесь?» — и скопировать числа. #}
+                  <div><label>Широта</label>
+                    <input name="latitude" value="{{ item.latitude if item.latitude is not none else '' }}"
+                           placeholder="52.608900"></div>
+                  <div><label>Долгота</label>
+                    <input name="longitude" value="{{ item.longitude if item.longitude is not none else '' }}"
+                           placeholder="39.594400"></div>
+                </div>
+                <div class="actions" style="margin-top:8px">
+                  <button type="submit" class="button ghost">Сохранить</button>
+                </div>
+              </form>
+            </div>
+          </details>
+          {{ value_actions("addresses", item) }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">Ничего не найдено</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/ui/dictionaries/addresses" style="margin-top:12px">
+    <div class="grid">
+      <div><label>Адрес одной строкой *</label>
+        <input name="full_address" required list="address-options"
+               placeholder="398600, Липецкая область, г Липецк, ул. Московская, д 8 а"></div>
+      <div><label>Индекс</label><input name="postal_code"></div>
+      <div><label>Населённый пункт</label><input name="locality"></div>
+      <div><label>Улица</label><input name="street"></div>
+      <div><label>Дом</label><input name="house"></div>
+      <div><label>Широта</label><input name="latitude" placeholder="52.608900"></div>
+      <div><label>Долгота</label><input name="longitude" placeholder="39.594400"></div>
+    </div>
+    <div class="actions" style="margin-top:10px"><button type="submit">Добавить адрес</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Объекты контроля ({{ objects|length }})</h3>
+  <table>
+    <thead><tr><th style="width:50px">№</th><th>Вид</th><th>Описание</th>
+      <th>Родительный падеж</th><th>Адрес</th></tr></thead>
+    <tbody>
+    {% for item in objects %}
+      <tr {% if is_archived(item) %}style="background:#f7f7f9; color:#6b7280"{% endif %}>
+        <td>{{ item.id }}</td>
+        <td>{{ item.object_type.name if item.object_type else "—" }}</td>
+        <td>{{ item.name or "—" }}
+          <details class="edit"><summary>Изменить</summary>
+            <div>
+              <form method="post" action="/ui/dictionaries/objects">
+                <input type="hidden" name="id" value="{{ item.id }}">
+                <div class="grid">
+                  <div><label>Вид объекта</label>
+                    <select name="object_type_id">
+                      {% for type in object_types %}
+                        <option value="{{ type.id }}" {% if item.object_type_id == type.id %}selected{% endif %}>{{ type.name }}</option>
+                      {% endfor %}
+                    </select></div>
+                  <div><label>Описание объекта</label><input name="name" value="{{ item.name or '' }}"></div>
+                  <div><label>Описание в родительном падеже</label>
+                    <input name="name_genitive" value="{{ item.name_genitive or '' }}"></div>
+                  <div><label>Адрес</label>
+                    <input id="f-control-object-address-{{ item.id }}" name="address" list="address-options"
+                           value="{{ item.address.full_address if item.address else '' }}"></div>
+                  <div><label>Кадастровый номер</label>
+                    <input name="cadastral_number" value="{{ item.cadastral_number or '' }}"></div>
+                  <div><label>Эксплуатирующая организация</label>
+                    <select name="operating_organization_id">
+                      <option value="">— не указана —</option>
+                      {% for org in organizations %}
+                        <option value="{{ org.id }}" {% if item.operating_organization_id == org.id %}selected{% endif %}>{{ org.short_name }}</option>
+                      {% endfor %}
+                    </select></div>
+                </div>
+                <div class="actions" style="margin-top:8px">
+                  <button type="submit" class="button ghost">Сохранить</button>
+                </div>
+              </form>
+            </div>
+          </details>
+        </td>
+        <td class="muted">{{ item.name_genitive or "—" }}</td>
+        <td>{{ item.address.full_address if item.address else "—" }}{{ value_actions("objects", item) }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">Пусто</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/ui/dictionaries/objects" style="margin-top:12px">
+    <div class="grid">
+      <div><label>Вид объекта *</label>
+        <select name="object_type_id" required>
+          {% for item in object_types %}<option value="{{ item.id }}">{{ item.name }}</option>{% endfor %}
+        </select></div>
+      <div><label>Описание объекта *</label>
+        <input name="name" required placeholder="земельный участок, расположенный по адресу: …"></div>
+      <div><label>Описание в родительном падеже</label>
+        <input name="name_genitive" placeholder="Земельного участка, расположенного по адресу: …"></div>
+      <div><label>Адрес</label>
+        <input name="address" list="address-options" placeholder="введите адрес строкой"></div>
+      <div><label>Кадастровый номер</label><input name="cadastral_number"></div>
+      <div><label>Эксплуатирующая организация</label>
+        <select name="operating_organization_id">
+          <option value="">— не указана —</option>
+          {% for item in organizations %}<option value="{{ item.id }}">{{ item.short_name }}</option>{% endfor %}
+        </select></div>
+    </div>
+    <div class="actions" style="margin-top:10px"><button type="submit">Добавить объект</button></div>
+  </form>
+</div>
+
+<datalist id="address-options">
+  {% for item in addresses %}<option value="{{ item.full_address }}"></option>{% endfor %}
+</datalist>
+
+{% endblock %}

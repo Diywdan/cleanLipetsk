@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Вход в систему</title>
+  <style>
+    body { font: 14px/1.45 "Segoe UI", Arial, sans-serif; color: #1f2933;
+           background: #f6f7f9; margin: 0; display: flex; min-height: 100vh;
+           align-items: center; justify-content: center; }
+    .box { background: #fff; border: 1px solid #d6dae0; padding: 28px 32px;
+           width: 360px; }
+    h1 { font-size: 18px; margin: 0 0 6px; }
+    p.hint { color: #6b7280; margin: 0 0 18px; font-size: 13px; }
+    label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 3px; }
+    input { width: 100%; padding: 8px 10px; border: 1px solid #d6dae0;
+            border-radius: 3px; font: inherit; margin-bottom: 12px; }
+    button { width: 100%; background: #1d4ed8; color: #fff; border: 0;
+             border-radius: 3px; padding: 9px 14px; font: inherit; cursor: pointer; }
+    .err { background: #fdeaea; border: 1px solid #e3a6a6; padding: 9px 12px;
+           margin-bottom: 14px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Документы по заявкам</h1>
+    <p class="hint">Вход для сотрудников, оформляющих документы по контрольным мероприятиям.</p>
+    {% if err %}<div class="err">{{ err }}</div>{% endif %}
+    <form method="post" action="/ui/login">
+      {# Куда вернуться после входа: интерфейс диспетчера присылает свой адрес,
+         чтобы человек попал обратно в карточку, а не в список заявок. #}
+      <input type="hidden" name="next" value="{{ next or '/ui' }}">
+      <label>Электронная почта</label>
+      <input name="login" type="email" autocomplete="username" autofocus required>
+      <label>Пароль</label>
+      <input name="password" type="password" autocomplete="current-password" required>
+      <button type="submit">Войти</button>
+    </form>
+  </div>
+</body>
+</html>

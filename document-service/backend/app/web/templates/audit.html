@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Журнал действий{% endblock %}
+{% block content %}
+
+<h2>Журнал действий</h2>
+<p class="muted">Последние {{ page_size }} записей: кто, когда и что сделал.</p>
+
+<div class="card">
+  <form method="get" action="/ui/audit">
+    <div class="grid">
+      <div><label>Действие</label>
+        <select name="action">
+          <option value="">— любое —</option>
+          {% for item in actions %}
+            <option value="{{ item }}" {% if filter_action == item %}selected{% endif %}>
+              {{ action_titles.get(item, item) }}
+            </option>
+          {% endfor %}
+        </select></div>
+      <div><label>Объект</label>
+        <select name="entity_table">
+          <option value="">— любой —</option>
+          {% for item in entities %}
+            <option value="{{ item }}" {% if filter_entity == item %}selected{% endif %}>
+              {{ entity_titles.get(item, item) }}
+            </option>
+          {% endfor %}
+        </select></div>
+      <div><label>Пользователь</label>
+        <select name="actor_id">
+          <option value="">— любой —</option>
+          {% for item in users %}
+            <option value="{{ item.id }}" {% if filter_actor == item.id %}selected{% endif %}>
+              {{ item.full_name }}
+            </option>
+          {% endfor %}
+        </select></div>
+    </div>
+    <div class="actions" style="margin-top:10px">
+      <button type="submit">Показать</button>
+      <a class="button ghost" href="/ui/audit">Сбросить</a>
+    </div>
+  </form>
+</div>
+
+<table>
+  <thead>
+  <tr>
+    <th style="width:150px">Когда</th>
+    <th style="width:180px">Кто</th>
+    <th style="width:150px">Действие</th>
+    <th style="width:170px">Объект</th>
+    <th>Что именно</th>
+  </tr>
+  </thead>
+  <tbody>
+  {% for entry in entries %}
+    <tr>
+      <td>{{ entry.created_at|dtr }}</td>
+      <td>{{ entry.actor.full_name if entry.actor else "—" }}</td>
+      <td>{{ action_titles.get(entry.action, entry.action) }}</td>
+      <td>{{ entity_titles.get(entry.entity_table, entry.entity_table) }}
+        {% if entry.entity_id %}<span class="muted">№{{ entry.entity_id }}</span>{% endif %}
+      </td>
+      <td>
+        {{ entry.comment or "" }}
+        {% if entry.changes %}
+          <div class="muted" style="margin-top:4px">
+            {% for field, diff in entry.changes.items() %}
+              <div>{{ field }}: {{ diff["было"] if diff["было"] is not none else "—" }}
+                → {{ diff["стало"] if diff["стало"] is not none else "—" }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="muted">Записей нет</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

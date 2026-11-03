@@ -1,0 +1,530 @@
+From a39146b3b9a40451f4fac19ea6b9a0febebc26d9 Mon Sep 17 00:00:00 2001
+From: DSH <dsh@local>
+Date: Wed, 14 Oct 2026 13:49:50 +0300
+Subject: [PATCH] =?UTF-8?q?=D0=9A=D0=B0=D1=80=D1=82=D0=B0=20=D0=BD=D0=B0?=
+ =?UTF-8?q?=20OpenStreetMap=20=D0=B2=D0=BC=D0=B5=D1=81=D1=82=D0=BE=20?=
+ =?UTF-8?q?=D0=AF=D0=BD=D0=B4=D0=B5=D0=BA=D1=81.=D0=9A=D0=B0=D1=80=D1=82?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Кабинет Яндекса не дал настроить ключ: четыре ключа подряд сервисы не приняли,
+а карте нужно ограничение по Referer без ограничения по IP, которого их форма
+не позволяет. Вместо переписки с кабинетом карта переведена на Leaflet с
+подложкой OpenStreetMap — ключи, аккаунты и лимиты из проекта уходят совсем.
+
+* useLeafletMap: карта на Leaflet, подложка OpenStreetMap с указанием
+  авторства, контуры зон управ из данных, центр — Липецк;
+* useIncidentMarkers: метки на Leaflet, тот же вид маркера (свечение, пульс
+  у новых и КНМ), клик выбирает обращение, выбранное — поверх соседей;
+* загрузчик Яндекс.Карт и их типы удалены, зависимость от api-maps.yandex.ru
+  из сборки исчезла;
+* адреса без координат по-прежнему не получают метку.
+
+Подложка OSM хранит контуры домов, поэтому при точных координатах метка
+встаёт у нужного дома — это и требовалось для точности.
+---
+ package.json                                  |   2 +
+ src/widgets/map-radar/lib/map.css             |   6 +
+ src/widgets/map-radar/lib/mapUtils.ts         |  56 +-------
+ .../map-radar/lib/useIncidentMarkers.ts       |  67 +++++-----
+ src/widgets/map-radar/lib/useLeafletMap.ts    |  76 +++++++++++
+ src/widgets/map-radar/lib/useYandexMap.ts     | 126 ------------------
+ src/widgets/map-radar/lib/ymapsTypes.ts       |  35 -----
+ src/widgets/map-radar/ui/MapRadar.tsx         |   7 +-
+ 8 files changed, 118 insertions(+), 257 deletions(-)
+ create mode 100644 src/widgets/map-radar/lib/map.css
+ create mode 100644 src/widgets/map-radar/lib/useLeafletMap.ts
+ delete mode 100644 src/widgets/map-radar/lib/useYandexMap.ts
+ delete mode 100644 src/widgets/map-radar/lib/ymapsTypes.ts
+
+diff --git a/package.json b/package.json
+index d9f0ce0..4ff27ca 100644
+--- a/package.json
++++ b/package.json
+@@ -17,6 +17,7 @@
+     "class-variance-authority": "^0.7.1",
+     "cn": "^0.4.0",
+     "jspdf": "^4.2.1",
++    "leaflet": "^1.9.4",
+     "lucide-react": "^1.47.0",
+     "radix-ui": "^1.6.7",
+     "react": "^19.2.8",
+@@ -30,6 +31,7 @@
+   },
+   "devDependencies": {
+     "@eslint/js": "^10.0.1",
++    "@types/leaflet": "^1.9.22",
+     "@types/node": "^24.13.6",
+     "@types/react": "^19.2.18",
+     "@types/react-dom": "^19.2.7",
+diff --git a/src/widgets/map-radar/lib/map.css b/src/widgets/map-radar/lib/map.css
+new file mode 100644
+index 0000000..70c0860
+--- /dev/null
++++ b/src/widgets/map-radar/lib/map.css
+@@ -0,0 +1,6 @@
++/* Leaflet по умолчанию рисует у div-иконки белый квадрат с рамкой —
++   нашему маркеру он не нужен: точку рисует сам элемент. */
++.incident-marker {
++  background: none;
++  border: 0;
++}
+diff --git a/src/widgets/map-radar/lib/mapUtils.ts b/src/widgets/map-radar/lib/mapUtils.ts
+index 2325223..6b22669 100644
+--- a/src/widgets/map-radar/lib/mapUtils.ts
++++ b/src/widgets/map-radar/lib/mapUtils.ts
+@@ -1,62 +1,8 @@
+ import { STATUS_META } from "@/entities/incident/lib/presentation";
+ import type { IncidentStatus } from "@/entities/incident/types";
+ 
+-import type { Ymaps3 } from "./ymapsTypes";
+-
+-let ymapsLoadPromise: Promise<Ymaps3> | null = null;
+-
+-export function loadYmaps3(apiKey: string): Promise<Ymaps3> {
+-  const loaded = window.ymaps3;
+-  if (loaded) {
+-    return loaded.ready.then(() => loaded);
+-  }
+-
+-  if (ymapsLoadPromise) return ymapsLoadPromise;
+-
+-  ymapsLoadPromise = new Promise((resolve, reject) => {
+-    const existing = document.querySelector<HTMLScriptElement>(
+-      "script[data-ymaps3]",
+-    );
+-
+-    const waitUntilReady = async () => {
+-      const started = Date.now();
+-      while (!window.ymaps3) {
+-        if (Date.now() - started > 15000) {
+-          throw new Error("Таймаут загрузки Яндекс.Карт");
+-        }
+-        await new Promise((r) => setTimeout(r, 50));
+-      }
+-      await window.ymaps3.ready;
+-      return window.ymaps3;
+-    };
+-
+-    if (existing) {
+-      waitUntilReady().then(resolve).catch(reject);
+-      return;
+-    }
+-
+-    const script = document.createElement("script");
+-    script.src = `https://api-maps.yandex.ru/v3/?apikey=${apiKey}&lang=ru_RU`;
+-    script.async = true;
+-    script.dataset.ymaps3 = "true";
+-    script.onload = () => {
+-      waitUntilReady().then(resolve).catch(reject);
+-    };
+-    script.onerror = () => {
+-      ymapsLoadPromise = null;
+-      reject(
+-        new Error(
+-          "Яндекс вернул отказ (часто 403). В кабинете ключа укажите HTTP Referer: localhost",
+-        ),
+-      );
+-    };
+-    document.head.appendChild(script);
+-  });
+-
+-  return ymapsLoadPromise;
+-}
+-
+ // Маркер обращения: светящаяся точка, у новых и КНМ — пульс.
++// Карта подложки тут не касается: элемент одинаково годится и для Leaflet.
+ export function createMarkerElement(
+   status: IncidentStatus,
+   isSelected: boolean,
+diff --git a/src/widgets/map-radar/lib/useIncidentMarkers.ts b/src/widgets/map-radar/lib/useIncidentMarkers.ts
+index 625b7f7..a5ee0f6 100644
+--- a/src/widgets/map-radar/lib/useIncidentMarkers.ts
++++ b/src/widgets/map-radar/lib/useIncidentMarkers.ts
+@@ -1,30 +1,26 @@
+ import { useEffect, useRef } from 'react';
++import L from 'leaflet';
+ import { useIncidentStore } from '@/entities/incident/model/incidentStore';
+ import { useFilteredIncidents } from '@/entities/incident/model/filterStore';
+-import { useStandStore } from '@/shared/theme/standStore';
+ import { createMarkerElement } from './mapUtils';
+-import type { YMapInstance } from './ymapsTypes';
+ 
+-export function useIncidentMarkers(mapReady: boolean, mapRef: React.RefObject<YMapInstance | null>) {
+-  const markerChildrenRef = useRef<object[]>([]);
++export function useIncidentMarkers(
++  mapReady: boolean,
++  mapRef: React.RefObject<L.Map | null>,
++) {
++  const markersRef = useRef<L.Marker[]>([]);
+ 
+   // На карте — те же обращения, что в реестре после фильтров
+   const incidents = useFilteredIncidents();
+   const { selectedIncident, selectIncident } = useIncidentStore();
+-  const mode = useStandStore((s) => s.mode);
+ 
+   useEffect(() => {
+-    // Если карта еще не проинициализирована хуком useYandexMap — ничего не делаем
+-    if (!mapReady || !mapRef.current || !window.ymaps3) return;
++    const map = mapRef.current;
++    if (!mapReady || !map) return;
+ 
+-    const { YMapMarker } = window.ymaps3;
+-    const currentMap = mapRef.current;
+-
+-    // Безопасно очищаем старые маркеры перед перерисовкой
+-    markerChildrenRef.current.forEach((marker) => {
+-      try { currentMap.removeChild(marker); } catch { /* ignore */ }
+-    });
+-    markerChildrenRef.current = [];
++    // Перерисовываем метки: сначала убираем прежние
++    markersRef.current.forEach((marker) => marker.remove());
++    markersRef.current = [];
+ 
+     // Выбранный — последним, чтобы лежал поверх соседей
+     const ordered = [...incidents].sort(
+@@ -32,36 +28,33 @@ export function useIncidentMarkers(mapReady: boolean, mapRef: React.RefObject<YM
+     );
+ 
+     ordered.forEach((incident) => {
+-      // Адрес без координат: метку поставить некуда — снимок всё равно
+-      // показал бы точку в океане.
+-      if (!incident.location.coordinates) return;
++      const coordinates = incident.location.coordinates;
++      // Адрес без координат: метку поставить некуда.
++      if (!coordinates) return;
++      const [lon, lat] = coordinates;
+       const isSelected = selectedIncident?.id === incident.id;
+-      const markerElement = createMarkerElement(
+-        incident.status,
+-        isSelected,
+-        () => selectIncident(incident.id),
+-      );
+ 
+-      const marker = new YMapMarker({
+-        coordinates: [...incident.location.coordinates],
+-        draggable: false,
+-        zIndex: isSelected ? 1000 : 1,
+-      }, markerElement);
+-
+-      currentMap.addChild(marker);
+-      markerChildrenRef.current.push(marker);
++      const element = createMarkerElement(incident.status, isSelected, () =>
++        selectIncident(incident.id),
++      );
++      const marker = L.marker([lat, lon], {
++        icon: L.divIcon({ html: element, className: 'incident-marker', iconSize: [0, 0], iconAnchor: [0, 0] }),
++        zIndexOffset: isSelected ? 1000 : 0,
++        keyboard: false,
++      });
++      marker.addTo(map);
++      markersRef.current.push(marker);
+     });
+-  }, [mapReady, incidents, selectedIncident, selectIncident, mapRef, mode]);
++  }, [mapReady, incidents, selectedIncident, selectIncident, mapRef]);
+ 
+   // Перелёт к выбранному обращению
+   const selectedId = selectedIncident?.id;
+   const selectedCoords = selectedIncident?.location.coordinates;
+   useEffect(() => {
+-    if (!mapReady || !mapRef.current || !selectedCoords) return;
+-    try {
+-      const zoom = Math.max(mapRef.current.zoom ?? 14, 14.5);
+-      mapRef.current.update({ location: { center: [...selectedCoords], zoom, duration: 700 } });
+-    } catch { /* карта могла быть уничтожена при смене темы */ }
++    const map = mapRef.current;
++    if (!mapReady || !map || !selectedCoords) return;
++    const [lon, lat] = selectedCoords;
++    map.flyTo([lat, lon], Math.max(map.getZoom() ?? 14, 14.5), { duration: 0.7 });
+     // координаты меняются вместе с id
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [mapReady, selectedId, mapRef]);
+diff --git a/src/widgets/map-radar/lib/useLeafletMap.ts b/src/widgets/map-radar/lib/useLeafletMap.ts
+new file mode 100644
+index 0000000..fca1171
+--- /dev/null
++++ b/src/widgets/map-radar/lib/useLeafletMap.ts
+@@ -0,0 +1,76 @@
++import { useEffect, useRef, useState } from 'react';
++import L from 'leaflet';
++import 'leaflet/dist/leaflet.css';
++import './map.css';
++import { LIPETSK_POLYGONS } from './lipetskPolygons';
++
++// Центр Липецка: карта открывается на городе, а не на середине мира.
++const CITY_CENTER: [number, number] = [52.6089, 39.5994];
++const CITY_ZOOM = 12;
++
++// Подложка OpenStreetMap: ни ключей, ни аккаунтов, ни лимитов, а дома
++// нарисованы контурами — по ним и видно, куда встала метка.
++const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
++const ATTRIBUTION = '© OpenStreetMap';
++
++interface Result {
++  mapReady: boolean;
++  error: string | null;
++  mapRef: React.RefObject<L.Map | null>;
++}
++
++export function useLeafletMap(
++  containerRef: React.RefObject<HTMLDivElement | null>,
++): Result {
++  const mapRef = useRef<L.Map | null>(null);
++  const [mapReady, setMapReady] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++
++  useEffect(() => {
++    const container = containerRef.current;
++    if (!container || mapRef.current) return;
++
++    try {
++      const map = L.map(container, {
++        center: CITY_CENTER,
++        zoom: CITY_ZOOM,
++        zoomControl: true,
++        attributionControl: true,
++      });
++
++      L.tileLayer(TILES, { maxZoom: 19, attribution: ATTRIBUTION }).addTo(map);
++
++      // Зоны ответственности управ: контуры берём из данных, цвет — оттуда же.
++      // В исходных данных порядок как в Яндекс Картах — [долгота, широта],
++      // поэтому пару разворачиваем.
++      LIPETSK_POLYGONS.forEach((polygon) => {
++        const rings = (polygon.coordinates ?? []) as unknown as number[][][];
++        const latLngs = rings.map((ring) =>
++          ring.map(([lon, lat]) => [lat, lon] as [number, number]),
++        );
++        if (!latLngs.length) return;
++        L.polygon(latLngs, {
++          color: polygon.color ?? '#0D4CD3',
++          weight: 1.5,
++          fillColor: polygon.color ?? '#0D4CD3',
++          fillOpacity: 1,
++        }).addTo(map);
++      });
++
++      mapRef.current = map;
++      setMapReady(true);
++      // Контейнер мог получить размер уже после создания карты.
++      window.setTimeout(() => map.invalidateSize(), 0);
++    } catch (e) {
++      setError(e instanceof Error ? e.message : 'Не удалось построить карту');
++    }
++
++    return () => {
++      mapRef.current?.remove();
++      mapRef.current = null;
++      setMapReady(false);
++    };
++  }, [containerRef]);
++
++  return { mapReady, error, mapRef };
++}
+diff --git a/src/widgets/map-radar/lib/useYandexMap.ts b/src/widgets/map-radar/lib/useYandexMap.ts
+deleted file mode 100644
+index 2cb94f4..0000000
+--- a/src/widgets/map-radar/lib/useYandexMap.ts
++++ /dev/null
+@@ -1,126 +0,0 @@
+-import { useEffect, useState, useRef} from 'react';
+-import type { RefObject } from 'react';
+-import { loadYmaps3 } from './mapUtils'; // Импортируем твой асинхронный загрузчик
+-import type { YMapInstance } from './ymapsTypes';
+-import { LIPETSK_POLYGONS } from './lipetskPolygons';
+-import { readThemeColors } from '@/shared/theme/themeColors';
+-
+-interface UseYandexMapResult {
+-  mapReady: boolean;
+-  error: string | null;
+-  mapRef: RefObject<YMapInstance | null>;
+-}
+-
+-/**
+- * Кастомный хук для безопасной инициализации ядра Яндекс.Карт v3
+- * Изолирует логику StrictMode-предохранителей, деструкторов и отмены асинхронных тасков
+- */
+-export function useYandexMap(
+-  mapContainerRef: RefObject<HTMLDivElement | null>
+-): UseYandexMapResult {
+-  const [mapReady, setMapReady] = useState<boolean>(false);
+-  const [error, setError] = useState<string | null>(null);
+-  
+-  // Храним сам инстанс карты в Ref, чтобы он не стирался и не вызывал ререндеры
+-  const mapRef = useRef<YMapInstance | null>(null);
+-
+-  const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY;
+-
+-  useEffect(() => {
+-    if (!apiKey) return;
+-
+-    // Флаг отмены для защиты от Race Conditions (когда компонент размонтировался до того, как ответил сервер)
+-    let cancelled = false;
+-
+-    async function initMap() {
+-      try {
+-        // Вызываем твою функцию-синглтон загрузки
+-        const ymaps3 = await loadYmaps3(apiKey);
+-        if (cancelled || !mapContainerRef.current) return;
+-
+-        // Если карта каким-то образом уже существовала — принудительно зачищаем её
+-        if (mapRef.current) {
+-          try { mapRef.current.destroy(); } catch { /* ignore */ }
+-          mapRef.current = null;
+-        }
+-
+-        const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer, YMapFeatureDataSource, YMapLayer } = ymaps3;
+-
+-        // Инициализируем нативный WebGL-холст Яндекса v3
+-        const map = new YMap(mapContainerRef.current, {
+-          location: {
+-            center: [39.598, 52.611], // Липецк [lng, lat]: весь город с левым берегом
+-            zoom: 12.6,
+-          },
+-        });
+-
+-        // Подложку красит тема: CSS-фильтр .map-base canvas (styles/themes.css); маркеры — DOM, их фильтр не трогает
+-        map.addChild(new YMapDefaultSchemeLayer());
+-        map.addChild(new YMapDefaultFeaturesLayer());
+-
+-        // 2. Источник данных для ведомственных полигонов (Обязательно по доке v3)
+-        const polygonsSource = new YMapFeatureDataSource({ id: 'polygons-source' });
+-        map.addChild(polygonsSource);
+-
+-        // Слой, который будет физически отрисовывать наши цветные многоугольники
+-        const polygonsLayer = new YMapLayer({ dataSource: 'polygons-source', type: 'feature' });
+-        map.addChild(polygonsLayer);
+-
+-        // 3. Рисуем каждый ведомственный полигон на карте Липецка
+-        // Цвета зон — из темы (карта пересоздаётся при смене темы)
+-        const theme = readThemeColors();
+-        const zoneColors = [theme['zone-1'], theme['zone-2']];
+-        LIPETSK_POLYGONS.forEach((poly, index) => {
+-          const zone = zoneColors[index % zoneColors.length] || poly.borderColor;
+-          // Создаем нативный графический объект Яндекса
+-          const zoneFeature = new ymaps3.YMapFeature({
+-            id: poly.id,
+-            geometry: {
+-              type: 'Polygon',
+-              coordinates: poly.coordinates
+-            },
+-            style: {
+-              fill: `${zone}24`, // заливка двора: цвет зоны + альфа 0x24 (≈14 %)
+-              stroke: [
+-                { color: zone, width: 1.5 } // граница зоны ответственности УК
+-              ]
+-            }
+-          });
+-
+-          map.addChild(zoneFeature);
+-        });
+-        
+-        mapRef.current = map;
+-
+-        if (!cancelled) {
+-          setMapReady(true);
+-          setError(null);
+-        }
+-      } catch (err) {
+-        console.error('Ошибка инициализации Яндекс.Карт:', err);
+-        if (!cancelled) {
+-          setError(err instanceof Error ? err.message : 'Ошибка загрузки карты');
+-        }
+-      }
+-    }
+-
+-    initMap();
+-
+-    // Функция очистки при размонтировании виджета (Cleanup)
+-    return () => {
+-      cancelled = true;
+-      setMapReady(false);
+-      
+-      if (mapRef.current) {
+-        try {
+-          mapRef.current.destroy();
+-        } catch {
+-          // ignore
+-        }
+-        mapRef.current = null;
+-      }
+-    };
+-  }, [mapContainerRef, apiKey]); // Запускается строго один раз при привязке контейнера
+-
+-  return { mapReady, error: apiKey ? error : 'Нет ключа VITE_YANDEX_MAPS_API_KEY в .env', mapRef };
+-}
+diff --git a/src/widgets/map-radar/lib/ymapsTypes.ts b/src/widgets/map-radar/lib/ymapsTypes.ts
+deleted file mode 100644
+index c7cc491..0000000
+--- a/src/widgets/map-radar/lib/ymapsTypes.ts
++++ /dev/null
+@@ -1,35 +0,0 @@
+-// Яндекс Карты v3 грузятся скриптом с api-maps.yandex.ru, пакета типов в проекте нет.
+-// Описано ровно то, чем пользуется виджет, — без any.
+-
+-export type LngLat = [number, number];
+-
+-export interface YMapInstance {
+-  zoom?: number;
+-  addChild(child: object): void;
+-  removeChild(child: object): void;
+-  update(props: { location: { center: LngLat; zoom?: number; duration?: number } }): void;
+-  destroy(): void;
+-}
+-
+-type Entity<P = object> = new (props: P) => object;
+-
+-export interface Ymaps3 {
+-  ready: Promise<void>;
+-  YMap: new (container: HTMLElement, props: { location: { center: LngLat; zoom: number } }) => YMapInstance;
+-  YMapDefaultSchemeLayer: new (props?: object) => object;
+-  YMapDefaultFeaturesLayer: new (props?: object) => object;
+-  YMapFeatureDataSource: Entity<{ id: string }>;
+-  YMapLayer: Entity<{ dataSource: string; type: string }>;
+-  YMapFeature: Entity<{
+-    id: string;
+-    geometry: { type: 'Polygon'; coordinates: number[][][] };
+-    style: { fill: string; stroke: { color: string; width: number }[] };
+-  }>;
+-  YMapMarker: new (props: { coordinates: LngLat; zIndex?: number; draggable?: boolean }, element: HTMLElement) => object;
+-}
+-
+-declare global {
+-  interface Window {
+-    ymaps3?: Ymaps3;
+-  }
+-}
+diff --git a/src/widgets/map-radar/ui/MapRadar.tsx b/src/widgets/map-radar/ui/MapRadar.tsx
+index 514a515..5f3d4d7 100644
+--- a/src/widgets/map-radar/ui/MapRadar.tsx
++++ b/src/widgets/map-radar/ui/MapRadar.tsx
+@@ -1,9 +1,8 @@
+ import React, { useRef, } from 'react';
+-import { useYandexMap } from '../lib/useYandexMap';
++import { useLeafletMap } from '../lib/useLeafletMap';
+ import { useIncidentMarkers } from '../lib/useIncidentMarkers';
+ import { STATUS_META, STATUS_ORDER } from '@/entities/incident/lib/presentation';
+ 
+-import './../lib/ymapsTypes';
+ 
+ interface TProps {
+   // chrome — карточка с заголовком и легендой (базовая тема);
+@@ -16,12 +15,12 @@ interface TProps {
+ // чтобы зоны УК взяли цвета новой темы.
+ const MapCanvas: React.FC<{ className?: string }> = ({ className = '' }) => {
+   const mapContainerRef = useRef<HTMLDivElement>(null);
+-  const { mapReady, error, mapRef } = useYandexMap(mapContainerRef);
++  const { mapReady, error, mapRef } = useLeafletMap(mapContainerRef);
+   useIncidentMarkers(mapReady, mapRef);
+ 
+   return (
+     <div className={`relative overflow-hidden bg-muted ${className}`}>
+-      {/* Пустой узел только для Яндекса — React сюда children не кладёт */}
++      {/* Узел карты: Leaflet рисует внутри него, React сюда children не кладёт */}
+       <div ref={mapContainerRef} className="map-base absolute inset-0" />
+ 
+       {error && (
+-- 
+2.45.1.windows.1
+

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Данные для документов — заявка {{ case.id }}{% endblock %}
+{% block content %}
+
+<div class="actions" style="margin-bottom:14px">
+  <a class="button ghost" href="/ui/cases/{{ case.id }}">← К заявке</a>
+</div>
+
+<div class="card">
+  <h2>Данные для документов
+    <span class="muted">· заявка №{{ case.case_number or case.id }}{% if case.erp_number %} · мероприятие {{ case.erp_number }}{% endif %}</span>
+  </h2>
+  <div class="grid">
+    <div><label>Состояние</label>{{ state }}</div>
+    <div><label>Дата контроля</label>
+      {% if control_due_on %}{{ control_due_on|dtr }}{% else %}
+        <span class="muted">не установлена</span>{% endif %}
+      <div class="muted">{{ control_source }}</div>
+    </div>
+    <div><label>Пакет</label>{{ readiness.package_kind }}</div>
+  </div>
+</div>
+
+<div class="card">
+  {% if readiness.is_ready %}
+    <h2>Всё заполнено</h2>
+    <p>Документы можно собирать: {{ readiness.documents|length }} документов,
+       шаблоны готовы.</p>
+  {% else %}
+    <h2>Что осталось заполнить</h2>
+    <p class="muted" style="margin-top:0">
+      Пункты собраны по блокам. Ссылка ведёт прямо к полю — там оно
+      подсвечивается.
+    </p>
+    {% for group, items in readiness.issues|groupby("group") %}
+      <div style="margin-top:12px">
+        <b>{{ group }}</b>
+        <span class="muted">· {{ items|length }}</span>
+        <ul class="issues">
+          {% for issue in items %}
+            <li>{{ issue.message }}
+              <span class="muted">({{ issue.document }})</span> —
+              <a href="{{ issue.url }}">{{ issue.where }}</a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+    {% if readiness.missing_templates %}
+      <div style="margin-top:12px"><b>Шаблоны</b>
+        <ul class="issues">
+          {% for code in readiness.missing_templates %}
+            <li>нет шаблона документа <span class="muted">{{ code }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+
+{% if available_packages %}
+  <div class="card">
+    <h2>Сборка пакета</h2>
+    {% if can_build_packages %}
+      <div class="actions" style="align-items:flex-start">
+        {% for item in available_packages %}
+          <form method="post" action="/ui/cases/{{ case.id }}/packages" style="margin:0">
+            <input type="hidden" name="package_kind" value="{{ item.kind.code }}">
+            <button type="submit">{{ item.title }}</button>
+            <div class="muted" style="margin-top:4px; max-width:280px">{{ item.hint }}</div>
+          </form>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="muted" style="margin:0">
+        Пакет документов по этой заявке собирает делопроизводитель.
+      </p>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,269 @@
+From 202b5a69afc82a9f3c586cade9f25e8f54951b7b Mon Sep 17 00:00:00 2001
+From: DSH <dsh@local>
+Date: Wed, 14 Oct 2026 01:32:32 +0300
+Subject: [PATCH] =?UTF-8?q?=D0=98=D0=BD=D1=82=D0=B5=D0=B3=D1=80=D0=B0?=
+ =?UTF-8?q?=D1=86=D0=B8=D1=8F:=20=D0=B2=D1=85=D0=BE=D0=B4=20=D0=B2=20?=
+ =?UTF-8?q?=D0=B8=D0=BD=D1=82=D0=B5=D1=80=D1=84=D0=B5=D0=B9=D1=81=20=D0=B4?=
+ =?UTF-8?q?=D0=B8=D1=81=D0=BF=D0=B5=D1=82=D1=87=D0=B5=D1=80=D0=B0=20=D1=87?=
+ =?UTF-8?q?=D0=B5=D1=80=D0=B5=D0=B7=20=D1=81=D0=B5=D1=80=D0=B2=D0=B8=D1=81?=
+ =?UTF-8?q?=20=D0=B4=D0=BE=D0=BA=D1=83=D0=BC=D0=B5=D0=BD=D1=82=D0=BE=D0=B2?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Раньше у интерфейса была зашита демонстрационная роль (инспектор Алексей
+Смирнов), а наша сессия жила отдельно.
+
+* при открытии спрашиваем GET /api/me; если сессии нет — переходим на нашу
+  страницу входа с возвратом обратно в интерфейс диспетчера;
+* имя и роль человека приходят из сервиса (serviceRoleTitle), в верхней
+  полосе появились имя, роль и кнопка «Выйти»;
+* в режиме стенда (сборка без VITE_API_URL) остаётся прежний переключатель
+  ролей и подпись «данные условные».
+---
+ src/App.tsx                         | 45 +++++++++++++++++++-
+ src/entities/user/api/sessionApi.ts | 47 ++++++++++++++++++++
+ src/entities/user/types/index.ts    |  4 ++
+ src/widgets/stand-bar/StandBar.tsx  | 66 +++++++++++++++++++++++------
+ 4 files changed, 147 insertions(+), 15 deletions(-)
+ create mode 100644 src/entities/user/api/sessionApi.ts
+
+diff --git a/src/App.tsx b/src/App.tsx
+index e79b062..182b6e0 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,4 +1,4 @@
+-import { useEffect } from "react";
++import { useEffect, useState } from "react";
+ import { useIncidentStore } from "@/entities/incident/model/incidentStore";
+ import { MOCK_LIPETSK_INCIDENTS } from "@/entities/incident/model/mockIncidents";
+ import { DEMO_INCIDENTS } from "@/entities/incident/model/demoIncidents";
+@@ -8,21 +8,62 @@ import { createKpApi } from "@/entities/kp/model/kpApi";
+ import { useKpStore } from "@/entities/kp/model/kpStore";
+ import { kpFromIncidents } from "@/entities/kp/lib/registry";
+ import { useStandStore } from "@/shared/theme/standStore";
++import { useAuthStore } from "@/entities/user/model/authStore";
++import { fetchMe, loginUrl, toUser } from "@/entities/user/api/sessionApi";
++import { API_URL } from "@/shared/api/http";
+ import { MainPage } from "@/pages/MainPage/MainPage";
+ 
+ export default function App() {
+   const load = useIncidentStore((state) => state.load);
+   const loadKp = useKpStore((state) => state.load);
+   const dataset = useStandStore((state) => state.dataset);
++  const login = useAuthStore((state) => state.login);
++  const [checking, setChecking] = useState(Boolean(API_URL));
++
++  // С подключённым сервисом документов спрашиваем, кто вошёл. Сессия общая:
++  // если её нет, отправляем на нашу страницу входа и возвращаем сюда же.
++  useEffect(() => {
++    if (!API_URL) return;
++    let cancelled = false;
++    (async () => {
++      try {
++        const me = await fetchMe();
++        if (cancelled) return;
++        login(toUser(me));
++        setChecking(false);
++      } catch (error) {
++        if (cancelled) return;
++        const message = error instanceof Error ? error.message : '';
++        const unauthorized = /войти|Unauthorized|401/i.test(message);
++        if (unauthorized) {
++          window.location.replace(loginUrl(window.location.pathname + window.location.search));
++          return;
++        }
++        setChecking(false);
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++  }, [login]);
+ 
+   // Набор данных стенда: расширенный условный или четыре обращения из макета.
+   // С VITE_API_URL оба API ходят на бэкенд, и набор стенда не используется.
+   useEffect(() => {
++    if (checking) return;
+     const seed = () => (dataset === "demo" ? DEMO_INCIDENTS : MOCK_LIPETSK_INCIDENTS);
+     // Ссылка на дело: ?id=0248 открывает карточку сразу
+     load(createIncidentApi(dataset, seed), new URLSearchParams(window.location.search).get("id"));
+     loadKp(createKpApi(() => kpFromIncidents(seed(), dataset === "demo" ? DEMO_KP : [])));
+-  }, [dataset, load, loadKp]);
++  }, [dataset, load, loadKp, checking]);
++
++  if (checking) {
++    return (
++      <div className="grid min-h-screen place-items-center text-[14px] text-muted-foreground">
++        Проверяем вход в сервис документов…
++      </div>
++    );
++  }
+ 
+   // Шапка живёт в раскладке темы: она же переключает разделы
+   return (
+diff --git a/src/entities/user/api/sessionApi.ts b/src/entities/user/api/sessionApi.ts
+new file mode 100644
+index 0000000..2b47bec
+--- /dev/null
++++ b/src/entities/user/api/sessionApi.ts
+@@ -0,0 +1,47 @@
++import { API_URL, http } from '@/shared/api/http';
++import type { IUser, UserRole } from '../types';
++
++// Кто вошёл — спрашиваем у сервиса документов. Вход у двух интерфейсов общий:
++// сессия в куке, которую ставит страница входа сервиса. Поэтому здесь только
++// чтение пользователя и выход; пароля интерфейс диспетчера не видит.
++//
++// В режиме стенда сервиса нет: там остаётся прежний переключатель ролей.
++
++export interface ICurrentUser {
++  id: number;
++  name: string;
++  email: string;
++  role: UserRole;          // роль в терминах интерфейса диспетчера
++  serviceRole: string;     // код нашей роли: administrator, manager, inspector…
++  serviceRoleTitle: string; // название нашей роли для человека
++  isAdmin: boolean;
++  canEdit: boolean;
++  loginUrl: string;
++  logoutUrl: string;
++}
++
++export function loginUrl(nextPath: string): string {
++  return `/ui/login?next=${encodeURIComponent(nextPath)}`;
++}
++
++export function toUser(me: ICurrentUser): IUser {
++  return {
++    id: String(me.id),
++    name: me.name,
++    role: me.role,
++    // Подразделение в их модели — код ведомства; у нас его нет, оставляем ДРТ,
++    // а человеку показываем название его роли отдельным полем.
++    department: 'DRT',
++    serviceRoleTitle: me.serviceRoleTitle,
++  };
++}
++
++export async function fetchMe(): Promise<ICurrentUser> {
++  if (!API_URL) throw new Error('Сервис документов не подключён');
++  return http<ICurrentUser>(API_URL, '/me');
++}
++
++export async function logout(logoutPath: string): Promise<void> {
++  if (!API_URL) return;
++  await http(API_URL, logoutPath.replace(/^\/api/, ''), { method: 'POST', body: {} });
++}
+diff --git a/src/entities/user/types/index.ts b/src/entities/user/types/index.ts
+index 8d083ab..731269f 100644
+--- a/src/entities/user/types/index.ts
++++ b/src/entities/user/types/index.ts
+@@ -7,4 +7,8 @@ export interface IUser {
+   role: UserRole;
+   department: LipetskDepartment;
+   organizationName?: string; // Заполняется, если роль === 'UK' (например, "УК Левобережная")
++  // Название роли в сервисе документов: «Администратор», «Руководитель»,
++  // «Инспектор». Вход общий, поэтому показываем настоящую роль человека,
++  // а не роль их модели, подобранную по правам.
++  serviceRoleTitle?: string;
+ }
+diff --git a/src/widgets/stand-bar/StandBar.tsx b/src/widgets/stand-bar/StandBar.tsx
+index 4260ca4..70fdd4c 100644
+--- a/src/widgets/stand-bar/StandBar.tsx
++++ b/src/widgets/stand-bar/StandBar.tsx
+@@ -1,9 +1,11 @@
+ import React from 'react';
+-import { RotateCcw } from 'lucide-react';
++import { LogOut, RotateCcw } from 'lucide-react';
+ import { useAuthStore } from '@/entities/user/model/authStore';
+ import { useIncidentStore } from '@/entities/incident/model/incidentStore';
+ import type { UserRole } from '@/entities/user/types';
+ import { useStandStore, type DatasetId, type ModeId } from '@/shared/theme/standStore';
++import { API_URL } from '@/shared/api/http';
++import { loginUrl, logout } from '@/entities/user/api/sessionApi';
+ 
+ // Полоса демонстрационного стенда: тон, набор данных и роль без входа в систему.
+ const ROLES: { role: UserRole; title: string }[] = [
+@@ -73,6 +75,17 @@ export const StandBar: React.FC = () => {
+     else switchDevRole(role as UserRole, 'DRT');
+   };
+ 
++  // С подключённым сервисом документов роль приходит из нашей сессии:
++  // переключать её вручную нельзя, зато видно, кто вошёл, и есть выход.
++  const signedIn = Boolean(API_URL);
++  const exit = async () => {
++    try {
++      await logout('/api/logout');
++    } finally {
++      window.location.replace(loginUrl(window.location.pathname + window.location.search));
++    }
++  };
++
+   return (
+     <div
+       className="relative z-50 flex shrink-0 items-center gap-x-3 md:flex-wrap md:gap-x-5 gap-y-1.5 bg-[#0B1220] px-4 py-1.5 text-[12.5px] text-white/80 md:px-5"
+@@ -80,21 +93,48 @@ export const StandBar: React.FC = () => {
+     >
+       <span className="flex items-center gap-2">
+         <span className="size-1.5 rounded-full bg-[#F5B83D]" />
+-        <span className="hidden 2xl:inline">Демонстрационный стенд · данные условные</span>
+-        <span className="hidden sm:inline 2xl:hidden">Стенд · данные условные</span>
+-        <span className="hidden min-[420px]:inline sm:hidden">Стенд</span>
++        {signedIn ? (
++          <span className="hidden sm:inline">Сервис документов · данные заявок</span>
++        ) : (
++          <>
++            <span className="hidden 2xl:inline">Демонстрационный стенд · данные условные</span>
++            <span className="hidden sm:inline 2xl:hidden">Стенд · данные условные</span>
++            <span className="hidden min-[420px]:inline sm:hidden">Стенд</span>
++          </>
++        )}
+       </span>
+       <div className="ml-auto flex min-w-0 items-center gap-x-2 md:flex-wrap md:gap-x-5 md:gap-y-1.5">
+         <Segmented label="Тон" items={MODES} value={mode} onChange={(id) => setMode(id as ModeId)} />
+-        <div className="hidden sm:block">
+-          <Segmented label="Данные" items={DATASETS} value={dataset} onChange={(id) => setDataset(id as DatasetId)} />
+-        </div>
+-        <Segmented
+-          label="Роль"
+-          items={ROLES.map((r) => ({ id: r.role, title: r.title }))}
+-          value={currentUser?.role ?? 'INSPECTOR'}
+-          onChange={setRole}
+-        />
++        {!signedIn && (
++          <>
++            <div className="hidden sm:block">
++              <Segmented label="Данные" items={DATASETS} value={dataset} onChange={(id) => setDataset(id as DatasetId)} />
++            </div>
++            <Segmented
++              label="Роль"
++              items={ROLES.map((r) => ({ id: r.role, title: r.title }))}
++              value={currentUser?.role ?? 'INSPECTOR'}
++              onChange={setRole}
++            />
++          </>
++        )}
++        {signedIn && (
++          <span className="flex items-center gap-2 whitespace-nowrap">
++            <span className="hidden md:inline">{currentUser?.name}</span>
++            <span className="rounded-md bg-white/[0.09] px-2 py-0.5 text-white/85">
++              {currentUser?.serviceRoleTitle ?? 'роль не определена'}
++            </span>
++            <button
++              type="button"
++              onClick={exit}
++              title="Выйти из сервиса документов"
++              className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-white/75 hover:bg-white/10 hover:text-white"
++            >
++              <LogOut className="size-3.5" />
++              <span className="hidden lg:inline">Выйти</span>
++            </button>
++          </span>
++        )}
+         {canReset && (
+           <button
+             type="button"
+-- 
+2.45.1.windows.1
+

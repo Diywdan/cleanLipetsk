@@ -1,0 +1,78 @@
+From 4eccfad81bed5208bacde534f01de7c74c4dfedc Mon Sep 17 00:00:00 2001
+From: DSH <dsh@local>
+Date: Wed, 14 Oct 2026 01:16:33 +0300
+Subject: [PATCH] =?UTF-8?q?=D0=98=D0=BD=D1=82=D0=B5=D0=B3=D1=80=D0=B0?=
+ =?UTF-8?q?=D1=86=D0=B8=D1=8F:=20=D1=81=D0=B2=D1=8F=D0=B7=D0=BA=D0=B0=20?=
+ =?UTF-8?q?=D0=9A=D0=9D=D0=9C=20=E2=80=94=20=D0=B2=D1=8B=D0=B5=D0=B7=D0=B4?=
+ =?UTF-8?q?=D0=BD=D0=BE=D0=B5=20=D0=BE=D0=B1=D1=81=D0=BB=D0=B5=D0=B4=D0=BE?=
+ =?UTF-8?q?=D0=B2=D0=B0=D0=BD=D0=B8=D0=B5?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+По передаче материалов на КНМ сервис документов заводит выездное
+обследование, поэтому в карточке обращения появилась строка «Обследование
+№… заведено» со ссылкой в сервис (поля serviceUrl, inspection, knm в
+IIncident). Пока обследования нет — подсказка, что его заведёт передача
+на КНМ.
+---
+ src/entities/incident/types/index.ts          | 12 +++++++++++
+ src/entities/incident/ui/card/CardActions.tsx | 21 +++++++++++++++++++
+ 2 files changed, 33 insertions(+)
+
+diff --git a/src/entities/incident/types/index.ts b/src/entities/incident/types/index.ts
+index 32de912..29b55f0 100644
+--- a/src/entities/incident/types/index.ts
++++ b/src/entities/incident/types/index.ts
+@@ -142,4 +142,16 @@ export interface IIncident {
+     report?: IPhotoReport;    // подробности фотоотчёта
+     boundingBoxes: IBoundingBox[];
+   };
++  // ─── Связь с сервисом документов (наш бэкенд) ───
++  // В режиме стенда этих полей нет: там обращения живут в браузере.
++  serviceUrl?: string;        // карточка заявки в сервисе документов
++  inspection?: {              // выездное обследование, заведённое по обращению
++    id: number;
++    startedAt: string | null;
++    hasPhoto: boolean;
++  } | null;
++  knm?: {                     // отметки контрольно-надзорного контура
++    escalated: boolean;
++    dismissed: boolean;
++  };
+ }
+diff --git a/src/entities/incident/ui/card/CardActions.tsx b/src/entities/incident/ui/card/CardActions.tsx
+index 9617caf..d652237 100644
+--- a/src/entities/incident/ui/card/CardActions.tsx
++++ b/src/entities/incident/ui/card/CardActions.tsx
+@@ -192,6 +192,27 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
+       return (
+         <div className="flex flex-col gap-3">
+           {note('bad', 'Срок устранения истёк. Материалы готовятся к передаче на контрольно-надзорное мероприятие.')}
++          {/* Связка с сервисом документов: по передаче на КНМ там заводится
++              выездное обследование, и дальше работа идёт по нему. */}
++          {incident.inspection ? (
++            <p className="m-0 text-[13.5px] text-muted-foreground">
++              Обследование №{incident.inspection.id} заведено
++              {incident.inspection.hasPhoto ? ', фотоматериал есть' : ', фотоматериал ещё не загружен'}.
++              {incident.serviceUrl && (
++                <>
++                  {' '}
++                  <a href={incident.serviceUrl} className="text-primary no-underline hover:underline">
++                    Открыть в сервисе документов
++                  </a>
++                </>
++              )}
++            </p>
++          ) : (
++            <p className="m-0 text-[13.5px] text-muted-foreground">
++              Обследование по обращению ещё не заведено: передайте материалы на КНМ, и
++              сервис документов заведёт выездное обследование.
++            </p>
++          )}
+           {allowed('ISSUE_ACT') && (
+             <Button
+               onClick={async () => {
+-- 
+2.45.1.windows.1
+

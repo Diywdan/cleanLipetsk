@@ -1,0 +1,52 @@
+name: chisto-crm
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: crm
+      POSTGRES_USER: crm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?запустите scripts/bootstrap_env.py}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm -d crm"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  crm:
+    build: .
+    image: chisto-crm:local
+    container_name: chisto-crm
+    env_file:
+      - .env
+    environment:
+      CRM_DATABASE_URL: postgresql+psycopg://crm:${POSTGRES_PASSWORD}@postgres:5432/crm
+      CRM_DOCUMENT_SERVICE_URL: ${CRM_DOCUMENT_SERVICE_URL:-}
+      CRM_DOCUMENT_SERVICE_PUBLIC_URL: ${CRM_DOCUMENT_SERVICE_PUBLIC_URL:-}
+      CRM_DOCUMENT_SERVICE_TOKEN: ${CRM_DOCUMENT_SERVICE_TOKEN:-}
+    volumes:
+      - crm_files:/app/data/files  # фото отчётов исполнителей и копии снимков «до» из DG
+      - ./web:/app/web:ro          # собранный фронт cleanLipetsk (VITE_API_URL=/api/v1), можно пустым
+      - ./maps:/app/maps:ro        # подложка карты lipetsk.pmtiles, можно пустой
+    ports:
+      # На ВМ 10.248.55.165 занят 18048 (test_crm_drt); CRM слушает 18080.
+      - "${CRM_BIND_HOST:-127.0.0.1}:${CRM_HOST_PORT:-18080}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - default
+      - document-service-network
+
+volumes:
+  postgres_data:
+  crm_files:
+
+networks:
+  document-service-network:
+    external: true
+    name: chisto-document-service

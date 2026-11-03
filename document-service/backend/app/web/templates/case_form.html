@@ -1,0 +1,555 @@
+{% extends "base.html" %}
+{% block title %}{{ "Редактирование заявки" if is_edit else ("Копирование заявки" if is_copy else "Новая заявка") }}{% endblock %}
+
+{#
+  Кнопка «＋» и блок добавления значения рядом со списком.
+  Значение уходит на /api/dictionaries/... и появляется в списке сразу,
+  страница не перезагружается — введённые в форме данные не теряются.
+#}
+{% macro add_button(target) %}
+<button type="button" class="ghost-mini" data-add-open="{{ target }}"
+        title="Добавить значение в справочник">＋</button>
+{% endmacro %}
+
+{% macro add_block(kind, target, title, fields) %}
+<div class="inline-add" data-add-block="{{ kind }}" data-target="{{ target }}" hidden>
+  <div class="muted" style="margin-bottom:4px">{{ title }}</div>
+  {% for name, placeholder in fields %}
+    <input name="{{ name }}" placeholder="{{ placeholder }}" style="margin-bottom:4px">
+  {% endfor %}
+  <button type="button" class="button ghost" data-add-submit="{{ kind }}">Добавить</button>
+</div>
+{% endmacro %}
+
+{% block content %}
+
+<div class="card" style="border-left:4px solid #2e7d32">
+  <h3 style="margin-top:0">Что заполнить при создании заявки</h3>
+  <p class="muted" style="margin:0">
+    Обязательного минимума три: <b>что случилось</b>, <b>вид нарушения</b> и
+    <b>адрес</b> — объект контроля или адрес нарушения. Всё остальное можно
+    заполнить позже: при подготовке документов система сама скажет, чего не
+    хватает, и укажет поле.
+  </p>
+</div>
+
+
+<h2>{% if is_edit %}Редактирование заявки №{{ case.case_number or case.id }}{% elif is_copy %}Новая заявка (копия заявки №{{ case.case_number or case.id }}){% else %}Новая заявка{% endif %}</h2>
+<p class="muted">Поля, обязательные для формирования пакета, проверяются перед сборкой —
+  незаполненные будут перечислены в карточке заявки.</p>
+
+<form method="post" action="{{ '/ui/cases/' ~ case.id if is_edit else '/ui/cases' }}">
+  <div class="card">
+    <h3>Дело</h3>
+    <div class="grid">
+      {# Внутренний номер присваивает система: он сквозной для всех
+         пользователей, поэтому поля ввода здесь нет. При копировании
+         номер показываем не исходный, а будущий — новый. #}
+      <div><label>Внутренний номер</label>
+        {% if is_edit and case and case.case_number %}
+          <div><b>{{ case.case_number }}</b>
+            <span class="muted">— присвоен автоматически</span></div>
+        {% else %}
+          <div class="muted">будет присвоен автоматически при сохранении</div>
+        {% endif %}
+      </div>
+      <div><label>Номер мероприятия (реестр)</label>
+        <input name="erp_number" value="{{ case.erp_number or '' if case else '' }}"></div>
+      <div><label>Статус</label>
+        <select name="status_id">
+          <option value="">— не указан —</option>
+          {% for item in statuses %}
+            <option value="{{ item.id }}" {% if case and case.status_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Контроль и лица</h3>
+    <div class="grid">
+      <div><label>Вид муниципального контроля</label>
+        <select name="control_kind_id">
+          <option value="">— не указан —</option>
+          {% for item in control_kinds %}
+            <option value="{{ item.id }}" {% if case and case.control_kind_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select></div>
+      <div><label>Форма мероприятия</label>
+        <select name="control_form_id">
+          <option value="">— не указана —</option>
+          {% for item in control_forms %}
+            <option value="{{ item.id }}" {% if case and case.control_form_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select></div>
+      <div><label>Орган контроля</label>
+        <select name="control_body_id">
+          <option value="">— не указан —</option>
+          {% for item in control_bodies %}
+            <option value="{{ item.id }}" {% if case and case.control_body_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select></div>
+      <div><label>Контролируемое лицо {{ add_button("controlled_organization_id") }}</label>
+        <select name="controlled_organization_id" id="controlled_organization_id" data-dictionary="organizations">
+          <option value="">— не указано —</option>
+          {% for item in organizations %}
+            <option value="{{ item.id }}" {% if case and case.controlled_organization_id == item.id %}selected{% endif %}>{{ item.short_name }}</option>
+          {% endfor %}
+        </select>
+        {{ add_block("organizations", "controlled_organization_id", "Новая организация",
+                     [("short_name", "Краткое наименование *"), ("inn", "ИНН"),
+                      ("legal_address", "Юридический адрес"), ("email", "Электронная почта")]) }}
+      </div>
+      <div><label>Филиал (подразделение) {{ add_button("controlled_unit_id") }}</label>
+        <select name="controlled_unit_id" id="controlled_unit_id" data-dictionary="units">
+          <option value="">— нет —</option>
+          {% for item in units %}
+            <option value="{{ item.id }}" {% if case and case.controlled_unit_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="inline-add" data-add-block="units" data-target="controlled_unit_id"
+             data-organization-from="controlled_organization_id" hidden>
+          <div class="muted" style="margin-bottom:4px">
+            Новое подразделение (сначала выберите организацию выше)
+          </div>
+          <input name="name" placeholder="Название *" style="margin-bottom:4px">
+          <input name="inn" placeholder="ИНН подразделения" style="margin-bottom:4px">
+          <input name="kpp" placeholder="КПП подразделения" style="margin-bottom:4px">
+          <input name="address" placeholder="Адрес" style="margin-bottom:4px">
+          <input name="email" placeholder="Электронная почта" style="margin-bottom:4px">
+          <button type="button" class="button ghost" data-add-submit="units">Добавить</button>
+        </div>
+      </div>
+      <div><label>Ответственный за исполнение {{ add_button("responsible_organization_id") }}</label>
+        <select name="responsible_organization_id" id="responsible_organization_id" data-dictionary="organizations">
+          <option value="">— не выбран —</option>
+          {% for item in organizations %}
+            <option value="{{ item.id }}" {% if case and case.responsible_organization_id == item.id %}selected{% endif %}>{{ item.short_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div><label>Объект контроля {{ add_button("control_object_id") }}</label>
+        <select name="control_object_id" id="control_object_id" data-dictionary="objects">
+          <option value="">— не указан —</option>
+          {% for item in objects %}
+            <option value="{{ item.id }}" {% if case and case.control_object_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="inline-add" data-add-block="objects" data-target="control_object_id" hidden>
+          <div class="muted" style="margin-bottom:4px">Новый объект контроля</div>
+          <select name="object_type_id" style="margin-bottom:4px">
+            {% for type in object_types %}<option value="{{ type.id }}">{{ type.name }}</option>{% endfor %}
+          </select>
+          <input name="name" placeholder="Описание объекта *" style="margin-bottom:4px">
+          <input name="name_genitive" placeholder="Описание в родительном падеже" style="margin-bottom:4px">
+          <input name="address" list="address-options" placeholder="Адрес" style="margin-bottom:4px">
+          <button type="button" class="button ghost" data-add-submit="objects">Добавить</button>
+        </div>
+      </div>
+      <div><label>Утверждающий (задание, решение) {{ add_button("assignment_approved_by_signatory_id") }}</label>
+        <select name="assignment_approved_by_signatory_id" id="assignment_approved_by_signatory_id" data-dictionary="signatories">
+          <option value="">— не указан —</option>
+          {% for item in signatories %}
+            <option value="{{ item.id }}" {% if case and case.assignment_approved_by_signatory_id == item.id %}selected{% endif %}>{{ item.full_name }} — {{ item.position }}</option>
+          {% endfor %}
+        </select>
+        {{ add_block("signatories", "assignment_approved_by_signatory_id", "Новое утверждающее лицо",
+                     [("full_name", "ФИО *"), ("position", "Должность *"),
+                      ("position_genitive", "Должность в родительном падеже"),
+                      ("short_name_genitive", "Подпись в родительном падеже")]) }}
+      </div>
+      <div><label>Инспектор {{ add_button("inspector_id") }}</label>
+        <select name="inspector_id" id="inspector_id" data-dictionary="inspectors">
+          <option value="">— не указан —</option>
+          {% for item in inspectors %}
+            <option value="{{ item.id }}" {% if inspector_id == item.id %}selected{% endif %}>{{ item.full_name }} — {{ item.position }}</option>
+          {% endfor %}
+        </select>
+        {{ add_block("inspectors", "inspector_id", "Новый инспектор",
+                     [("full_name", "ФИО *"), ("position", "Должность *"),
+                      ("position_instrumental", "Должность в творительном падеже"),
+                      ("full_name_instrumental", "ФИО в творительном падеже")]) }}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Предмет и сроки</h3>
+    {# Цель и предмет выбираются из справочника: это длинные юридические
+       фразы, и опечатка меняет текст документа. В новой заявке подставлено
+       первое значение списка. Если у заявки своя формулировка (её ввели
+       раньше руками), она остаётся отдельным вариантом. #}
+    <div class="row"><label>Цель проведения</label>
+      {% set purpose_current = (case.purpose if case and case.purpose else default_purpose) %}
+      <select name="purpose">
+        {% for item in purposes %}
+          <option value="{{ item.value }}" {% if item.value == purpose_current %}selected{% endif %}>{{ item.value }}</option>
+        {% endfor %}
+        {% if purpose_current and purpose_current not in purposes|map(attribute='value')|list %}
+          <option value="{{ purpose_current }}" selected>{{ purpose_current }}</option>
+        {% endif %}
+      </select>
+    </div>
+    <div class="row"><label>Предмет</label>
+      {% set subject_current = (case.subject if case and case.subject else default_subject) %}
+      <select name="subject">
+        {% for item in subjects %}
+          <option value="{{ item.value }}" {% if item.value == subject_current %}selected{% endif %}>{{ item.value }}</option>
+        {% endfor %}
+        {% if subject_current and subject_current not in subjects|map(attribute='value')|list %}
+          <option value="{{ subject_current }}" selected>{{ subject_current }}</option>
+        {% endif %}
+      </select>
+    </div>
+    <div class="grid">
+      <div><label>Номер задания</label>
+        <input name="assignment_number" value="{{ case.assignment_number or '' if case else '' }}"></div>
+      <div><label>Дата задания</label>
+        <input type="datetime-local" name="assignment_date" value="{{ case.assignment_date|dt if case else '' }}"></div>
+      <div><label>Планируемое начало</label>
+        <input type="datetime-local" name="planned_start_at" value="{{ case.planned_start_at|dt if case else '' }}"></div>
+      <div><label>Планируемое окончание</label>
+        <input type="datetime-local" name="planned_end_at" value="{{ case.planned_end_at|dt if case else '' }}"></div>
+      <div><label>Фактическое начало</label>
+        <input type="datetime-local" name="actual_start_at" value="{{ case.actual_start_at|dt if case else '' }}"></div>
+      <div><label>Фактическое окончание</label>
+        <input type="datetime-local" name="actual_end_at" value="{{ case.actual_end_at|dt if case else '' }}"></div>
+      <div><label>Дата и время составления акта</label>
+        <input type="datetime-local" name="act_composed_at" value="{{ case.act_composed_at|dt if case else '' }}"></div>
+      {# Номер мероприятия вводят в карточке заявки, и он же печатается в акте
+         и предписании. Здесь — уточнение на случай, если у акта свой номер. #}
+      <div><label>Номер акта (если отличается от номера мероприятия)</label>
+        <input name="act_number" value="{{ case.act_number or '' if case else '' }}"
+               placeholder="— как номер мероприятия —">
+        <div class="muted" style="font-size:12px">
+          Пустое поле значит «взять номер мероприятия».
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Выявленное нарушение</h3>
+    <div class="grid">
+      <div><label>Тип нарушения</label>
+        <select name="violation_type_id">
+          <option value="">— не указан —</option>
+          {% for item in violation_types %}
+            <option value="{{ item.id }}" {% if violation and violation.violation_type_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select></div>
+      <div><label>Дата и время выявления</label>
+        <input type="datetime-local" name="violation_detected_at" value="{{ violation.detected_at|dt if violation else '' }}"></div>
+      <div><label>Адрес нарушения</label>
+        <input name="violation_address" list="address-options"
+               value="{{ violation.address.full_address if violation and violation.address else '' }}"
+               placeholder="— как у объекта контроля —"></div>
+      {# Срок исполнения нарушения стоит рядом с самим нарушением: он нужен и
+         по заявке без документов, поэтому в свёрнутую часть формы не прячется.
+         Отдельного поля в базе не заводим — это срок исполнения заявки
+         (control_due_on), он же дата контроля, пока нет предписания. #}
+      <div><label>Срок исполнения нарушения</label>
+        <input type="date" name="control_due_on"
+               value="{{ case.control_due_on.isoformat() if case and case.control_due_on else '' }}">
+        <div class="muted" style="font-size:12px">
+          К какому сроку нарушение должно быть устранено. Пока предписания нет,
+          это и есть дата контроля по заявке; после выдачи предписания датой
+          контроля становится срок его исполнения.
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <label>Работы по нарушению: что и сколько нужно сделать</label>
+      {% include "_works_editor.html" %}
+    </div>
+    <div class="row"><label>Статьи нормативных актов (можно выбрать несколько, Ctrl)</label>
+      {# Список сужается до норм выбранного вида нарушения; «показать все»
+         возвращает справочник целиком — непривязанную норму тоже можно
+         выбрать. #}
+      <label class="muted" style="font-weight:400">
+        <input type="checkbox" id="show-all-articles"> показать все нормы справочника
+      </label>
+      <select name="violation_article_ids" multiple size="7" id="violation-articles">
+        {# Нормы сгруппированы по акту: иначе название акта повторялось в
+           каждой строке и список читался как «часть 3 статьи 12 Правил … —
+           Правила …». #}
+        {% for title, items in articles|npa_groups %}
+          {% if title %}<optgroup label="{{ title }}">{% endif %}
+          {% for item in items %}
+            <option value="{{ item.id }}"
+                    data-kinds="{{ article_kinds.get(item.id, [])|join(',') }}"
+                    {% if item.id in violation_provisions %}selected{% endif %}>
+              {{ item.reference_template }}
+            </option>
+          {% endfor %}
+          {% if title %}</optgroup>{% endif %}
+        {% endfor %}
+      </select>
+      <div class="muted" id="articles-hint" style="margin-top:4px; font-size:12px"></div>
+      <script>
+      // Поле квалификации: показываются нормы выбранного вида нарушения,
+      // чтобы не выбирать из всего справочника. Галочка «показать все нормы»
+      // возвращает полный список — непривязанную норму тоже должно быть
+      // можно выбрать. Уже выбранные нормы не скрываются никогда.
+      (function () {
+        const kind = document.querySelector('select[name="violation_type_id"]');
+        const select = document.getElementById('violation-articles');
+        const showAll = document.getElementById('show-all-articles');
+        const hint = document.getElementById('articles-hint');
+        if (!kind || !select || !showAll) { return; }
+
+        function apply() {
+          const kindId = kind.value;
+          let visible = 0;
+          // Нормы сгруппированы по акту через optgroup, а select.options
+          // возвращает только прямых потомков — нормы внутри групп в него
+          // не попадают. Поэтому обходим все option через querySelectorAll.
+          for (const option of select.querySelectorAll('option')) {
+            const kinds = (option.dataset.kinds || '').split(',').filter(Boolean);
+            const linked = kindId !== '' && kinds.includes(kindId);
+            const keep = option.selected || showAll.checked || kindId === '' || linked;
+            // Скрываем через style: атрибут hidden на option понимают не все
+            // браузеры, а вот display:none — все.
+            option.hidden = !keep;
+            option.style.display = keep ? '' : 'none';
+            option.disabled = !keep;
+            if (keep) { visible += 1; }
+          }
+          // Группа пустая, если все её нормы скрыты — саму группу тоже прячем,
+          // иначе останется заголовок акта без единой строки.
+          for (const group of select.querySelectorAll('optgroup')) {
+            const options = [...group.querySelectorAll('option')];
+            const empty = options.length > 0 && options.every((o) => o.hidden);
+            group.hidden = empty;
+            group.style.display = empty ? 'none' : '';
+          }
+          hint.textContent = kindId === ''
+            ? 'Вид нарушения не выбран — показаны все нормы справочника.'
+            : (showAll.checked
+                ? 'Показаны все нормы справочника.'
+                : 'Норм по этому виду нарушения: ' + visible
+                  + '. Остальные — по галочке «показать все нормы справочника».');
+        }
+        kind.addEventListener('change', apply);
+        showAll.addEventListener('change', apply);
+        apply();
+      })();
+      </script>
+    </div>
+  </div>
+
+  <details class="docs-section" style="margin:14px 0">
+    <summary style="cursor:pointer; padding:9px 11px; background:#f7f9fb;
+                    border:1px solid var(--line); border-radius:3px">
+      <b>Для документов</b>
+      <span class="muted">— всё, что ниже, заполняет делопроизводитель при
+      подготовке документов. Нажмите, чтобы раскрыть.</span>
+    </summary>
+    <div style="margin-top:10px">
+
+  <div class="card">
+    <h3>Основание проведения</h3>
+    <div class="grid">
+      <div><label>Тип основания</label>
+        <select name="basis_kind">
+          <option value="">— не указано —</option>
+          {% for code, title in basis_kinds %}
+            <option value="{{ code }}" {% if basis and basis.kind.value == code %}selected{% endif %}>{{ title }}</option>
+          {% endfor %}
+        </select></div>
+      <div><label>Номер документа-основания</label>
+        <input name="basis_document_number" value="{{ basis.document_number or '' if basis else '' }}"></div>
+      <div><label>Дата документа-основания</label>
+        <input type="datetime-local" name="basis_document_date" value="{{ basis.document_date|dt if basis else '' }}"></div>
+      <div><label>Описание (кто, что)</label>
+        <input name="basis_description" value="{{ basis.description or '' if basis else '' }}"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Контрольное действие</h3>
+    <div class="grid">
+      <div><label>Вид действия</label>
+        <select name="action_type">
+          {% for code, title in action_types %}
+            <option value="{{ code }}" {% if action and action.action_type.value == code %}selected{% elif not action and code == "inspection" %}selected{% endif %}>{{ title }}</option>
+          {% endfor %}
+        </select></div>
+      <div><label>Начало</label>
+        <input type="datetime-local" name="action_started_at" value="{{ action.started_at|dt if action else '' }}"></div>
+      <div><label>Окончание</label>
+        <input type="datetime-local" name="action_ended_at" value="{{ action.ended_at|dt if action else '' }}"></div>
+      <div><label>Место проведения</label>
+        <input name="action_place_address" list="address-options"
+               value="{{ action.place_address.full_address if action and action.place_address else '' }}"
+               placeholder="— как у объекта контроля —"></div>
+    </div>
+    <div class="row"><label>Результат действия</label>
+      <textarea name="action_result_text">{{ action.result_text or '' if action else '' }}</textarea></div>
+  </div>
+
+  </div>
+  </details>
+
+
+  <details class="docs-section" style="margin:14px 0">
+    <summary style="cursor:pointer; padding:9px 11px; background:#f7f9fb;
+                    border:1px solid var(--line); border-radius:3px">
+      <b>Основание, действие, предписание и решение</b>
+      <span class="muted">— заполняет делопроизводитель. Нажмите, чтобы
+      раскрыть.</span>
+    </summary>
+    <div style="margin-top:10px">
+
+  <div class="card">
+    <h3>Предписание</h3>
+    <div class="grid">
+      <div><label>Номер</label>
+        <input name="prescription_number" value="{{ prescription.number or '' if prescription else '' }}"></div>
+      <div><label>Дата выдачи</label>
+        <input type="date" name="prescription_issued_on" value="{{ prescription.issued_on.isoformat() if prescription and prescription.issued_on else '' }}"></div>
+      <div><label>Срок исполнения</label>
+        <input type="date" name="prescription_due_on" value="{{ prescription.due_on.isoformat() if prescription and prescription.due_on else '' }}"></div>
+      <div><label>Статус предписания</label>
+        <select name="prescription_status_id">
+          <option value="">— не указан —</option>
+          {% for item in prescription_statuses %}
+            <option value="{{ item.id }}" {% if prescription and prescription.status_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </select></div>
+    </div>
+    {# Работы и объёмы в требовании не вводятся: они берутся из нарушения.
+       Здесь выбирается только действие — что именно предписано с ними
+       сделать. Текст требования собирается из норм, реквизитов акта, работ и
+       этого действия. #}
+    <div class="row"><label>Что предписано сделать с работами нарушения</label>
+      <select name="prescription_action_code">
+        <option value="">— не указано (взять из вида нарушения) —</option>
+        {% for code, title in work_actions %}
+          <option value="{{ code }}" {% if prescription_item and prescription_item.action_code == code %}selected{% endif %}>{{ title }}</option>
+        {% endfor %}
+      </select>
+      <div class="muted" style="font-size:12px; margin-top:4px">
+        Работы и объёмы берутся из нарушения, нормы и реквизиты акта — из
+        справочников. В предписании получится: «в соответствии с <b>нормами</b>
+        <b>акта</b>, <b>действие</b> <b>нарушенное благоустройство…</b> по адресу
+        <b>адрес объекта</b>, а именно: <b>работы с объёмами</b>».
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Решение</h3>
+    <div class="grid">
+      <div><label>Номер решения</label>
+        <input name="decision_number" value="{{ decision.number or '' if decision else '' }}"></div>
+      <div><label>Дата решения</label>
+        <input type="date" name="decision_date" value="{{ decision.decision_date.isoformat() if decision and decision.decision_date else '' }}"></div>
+      <div><label>Вид решения</label>
+        <input name="decision_kind" value="{{ decision.decision_kind or '' if decision else '' }}"></div>
+    </div>
+    <div class="row"><label>Содержание решения</label>
+      <textarea name="decision_content">{{ decision.content or '' if decision else '' }}</textarea></div>
+    <div class="row"><label>Пункт решения</label>
+      <input name="decision_item_description" value="{{ decision_item.description or '' if decision_item else 'выдать предписание об устранении нарушений' }}"></div>
+  </div>
+
+    </div>
+  </details>
+
+  {# Кнопка сохранения стоит вне свёрнутых блоков: иначе, заполнив видимую
+     часть формы, её просто не найти — разделы «Для документов» и «Основание…»
+     по умолчанию закрыты. #}
+  <div class="actions" style="position:sticky; bottom:0; background:#fff;
+                              padding:10px 0; border-top:1px solid var(--line)">
+    <button type="submit">{{ "Сохранить изменения" if is_edit else "Создать заявку" }}</button>
+    <a class="button ghost" href="{{ '/ui/cases/' ~ case.id if is_edit else '/ui' }}">Отмена</a>
+  </div>
+
+</form>
+
+<datalist id="address-options">
+  {% for item in address_options %}<option value="{{ item.full_address }}"></option>{% endfor %}
+</datalist>
+
+<script>
+// Добавление значения в справочник прямо из формы заявки.
+// Значение уходит на /api/dictionaries/..., возвращается его номер и подпись,
+// после чего список обновляется — без перезагрузки страницы, чтобы не потерять
+// уже введённые данные.
+(function () {
+  const message = document.createElement('div');
+  message.className = 'muted';
+  message.style.marginTop = '4px';
+
+  function show(block, text, isError) {
+    let node = block.querySelector('[data-add-message]');
+    if (!node) {
+      node = document.createElement('div');
+      node.setAttribute('data-add-message', '');
+      node.style.marginTop = '4px';
+      block.appendChild(node);
+    }
+    node.textContent = text;
+    node.style.color = isError ? '#b91c1c' : '#166534';
+  }
+
+  document.querySelectorAll('[data-add-open]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const block = document.querySelector(
+        '[data-add-block][data-target="' + button.dataset.addOpen + '"]'
+      );
+      if (block) { block.hidden = !block.hidden; }
+    });
+  });
+
+  document.querySelectorAll('[data-add-submit]').forEach(function (button) {
+    button.addEventListener('click', async function () {
+      const kind = button.dataset.addSubmit;
+      const block = button.closest('[data-add-block]');
+      const select = document.getElementById(block.dataset.target);
+      const payload = new FormData();
+      block.querySelectorAll('input, select, textarea').forEach(function (field) {
+        if (field.name) { payload.append(field.name, field.value); }
+      });
+      payload.append('field', block.dataset.target);
+
+      let url = '/api/dictionaries/' + kind;
+      if (kind === 'units') {
+        const source = block.dataset.organizationFrom;
+        const organization = source ? document.getElementById(source) : null;
+        if (!organization || !organization.value) {
+          show(block, 'Сначала выберите организацию', true);
+          return;
+        }
+        url = '/api/dictionaries/organizations/' + organization.value + '/units';
+      }
+
+      button.disabled = true;
+      try {
+        const response = await fetch(url, { method: 'POST', body: payload });
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.detail || 'не удалось сохранить');
+        }
+        // Новое значение попадает во все списки этого справочника.
+        document.querySelectorAll('[data-dictionary="' + kind + '"]').forEach(function (list) {
+          const option = document.createElement('option');
+          option.value = result.id;
+          option.textContent = result.label;
+          option.selected = list === select;
+          list.appendChild(option);
+        });
+        show(block, 'Добавлено: ' + result.label, false);
+        block.querySelectorAll('input').forEach(function (input) { input.value = ''; });
+      } catch (error) {
+        show(block, 'Не удалось добавить: ' + error.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+})();
+</script>
+
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Новая заявка{% endblock %}
+{% block content %}
+
+{# Короткая форма новой заявки: только то, что нужно при внесении.
+   Всё остальное — реквизиты, подписант, задание, предписание, решение —
+   заполняется позже, когда дело дойдёт до документов. #}
+
+<div class="card" style="border-left:4px solid #2e7d32">
+  <h2>Новая заявка</h2>
+  <p class="muted" style="margin-top:0">
+    Заполните три вещи: что случилось, вид нарушения и адрес. Остальное можно
+    дополнить позже — в карточке заявки. Документы по заявке не формируются,
+    пока их не соберут: система подскажет, чего не хватает, когда они
+    понадобятся.
+  </p>
+</div>
+
+<form method="post" action="/ui/cases">
+  <div class="card">
+    <h3>Что случилось</h3>
+    {# Цель проведения выбирается из справочника: в новой заявке подставлено
+       первое значение, менять его нужно редко. #}
+    <div class="row"><label>Цель проведения</label>
+      <select name="purpose">
+        {% for item in purposes %}
+          <option value="{{ item.value }}" {% if item.value == default_purpose %}selected{% endif %}>{{ item.value }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="row"><label>Описание обращения</label>
+      <textarea name="subject" rows="3"
+                placeholder="Например: навалы мусора у контейнерной площадки, жалоба жильцов"></textarea></div>
+    <div class="row"><label>Адрес (можно приблизительно — уточните при осмотре)</label>
+      <input name="violation_address" list="address-options"
+             placeholder="г. Липецк, ул. …"></div>
+    {% if addresses %}
+      <datalist id="address-options">
+        {% for address in addresses %}
+          <option value="{{ address.full_address }}"></option>
+        {% endfor %}
+      </datalist>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Вид нарушения</h3>
+    <div class="grid">
+      <div><label>Вид нарушения</label>
+        <select name="violation_type_id">
+          <option value="">— не указан —</option>
+          {% for item in violation_types %}
+            <option value="{{ item.id }}">{{ item.name }}</option>
+          {% endfor %}
+        </select></div>
+      <div><label>Дата и время выявления</label>
+        <input type="datetime-local" name="violation_detected_at"></div>
+    </div>
+    <p class="muted" style="margin:8px 0 0">
+      Что именно нарушено, описывать здесь не нужно: в документы пойдёт текст
+      обращения. Уточнить формулировку можно потом — в карточке заявки.
+    </p>
+  </div>
+
+  <div class="actions">
+    <button type="submit">Создать заявку</button>
+    <a class="button ghost" href="/ui">Отмена</a>
+  </div>
+</form>
+
+{% endblock %}

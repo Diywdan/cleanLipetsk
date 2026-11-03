@@ -1,0 +1,21 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg[binary]
+alembic
+pydantic-settings
+
+# Часовые пояса: без пакета zoneinfo в slim-образе не находит Europe/Moscow,
+# и документы печатались бы в UTC.
+tzdata
+
+# Формирование документов: docxtpl заполняет DOCX-шаблоны с тегами Jinja2,
+# сохраняя исходное оформление официальных форм.
+docxtpl
+
+# Разбор HTML-форм минимальной CRM.
+python-multipart
+
+# Разметка фотографий осмотра: на снимок наносятся адрес объекта и дата
+# осмотра тем цветом, который выбрал инспектор.
+pillow

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Документы по заявкам{% endblock %}</title>
+  <style>
+    :root { --line: #d6dae0; --ink: #1f2933; --muted: #6b7280; --accent: #1d4ed8; }
+    * { box-sizing: border-box; }
+    body { font: 14px/1.45 "Segoe UI", Arial, sans-serif; color: var(--ink);
+           margin: 0; background: #f6f7f9; }
+    header { background: #fff; border-bottom: 1px solid var(--line); padding: 12px 24px;
+             display: flex; align-items: center; gap: 24px; }
+    header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+    header nav a { color: var(--accent); text-decoration: none; margin-right: 16px; }
+    main { padding: 20px 24px 60px; max-width: 1200px; }
+    h2 { font-size: 16px; margin: 24px 0 8px; }
+    h3 { font-size: 14px; margin: 18px 0 6px; color: var(--muted);
+         text-transform: uppercase; letter-spacing: .04em; }
+    table { border-collapse: collapse; width: 100%; background: #fff; }
+    th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: left;
+             vertical-align: top; }
+    th { background: #eef1f5; font-weight: 600; }
+    .card { background: #fff; border: 1px solid var(--line); padding: 16px 20px;
+            margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 10px 18px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+    input, select, textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--line);
+                              border-radius: 3px; font: inherit; background: #fff; }
+    textarea { min-height: 70px; resize: vertical; }
+    .row { margin-bottom: 8px; }
+    button, .button { background: var(--accent); color: #fff; border: 0; border-radius: 3px;
+             padding: 7px 14px; font: inherit; cursor: pointer; text-decoration: none;
+             display: inline-block; }
+    .button.secondary { background: #4b5563; }
+    .button.ghost { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+    .flash { padding: 10px 14px; border-radius: 3px; margin-bottom: 14px; }
+    .flash.ok { background: #e7f6ec; border: 1px solid #9dd3ae; }
+    .flash.err { background: #fdeaea; border: 1px solid #e3a6a6; }
+    .muted { color: var(--muted); }
+    ul.issues { margin: 6px 0 0 18px; padding: 0; }
+    ul.issues li { margin-bottom: 2px; }
+    .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .ghost-mini { background: #fff; color: var(--accent); border: 1px solid var(--line);
+                  border-radius: 3px; padding: 1px 7px; font: inherit; cursor: pointer; }
+    .inline-add { border: 1px dashed var(--line); background: #fbfcfd; padding: 8px;
+                  margin-top: 6px; border-radius: 3px; }
+    details.edit { margin-top: 4px; }
+    details.edit > summary { cursor: pointer; color: var(--accent); font-size: 12px; }
+    details.edit > div { margin-top: 6px; padding: 8px; background: #fbfcfd;
+                         border: 1px dashed var(--line); border-radius: 3px; }
+    /* Поле, к которому ведёт ссылка из замечаний готовности. */
+    .field-highlight { outline: 3px solid #f0a500; outline-offset: 2px;
+                       background: #fff8e1; transition: outline-color .4s; }
+    /* Пакет документов в карточке заявки: строка вида пакета, по щелчку
+       раскрывается список документов этого пакета. */
+    details.package { border: 1px solid var(--line); border-radius: 3px;
+                      margin-bottom: 8px; background: #fff; }
+    details.package > summary { cursor: pointer; padding: 8px 10px;
+                                background: #f7f9fb; border-radius: 3px; }
+    details.package[open] > summary { border-bottom: 1px solid var(--line);
+                                      border-radius: 3px 3px 0 0; }
+    details.package > table, details.package > p, details.package > div {
+      margin: 8px 10px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Документы по заявкам</h1>
+  <nav>
+    <a href="/ui">Заявки</a>
+    <a href="/ui/cases/new">Новая заявка</a>
+    <a href="/ui/dictionaries">Справочники</a>
+    <a href="/ui/areas">Управы</a>
+    {% if request.state.is_admin %}<a href="/ui/users">Пользователи</a>
+    <a href="/ui/audit">Журнал</a>{% endif %}
+    {# Интерфейс диспетчера: отдельная сборка SPA на том же сервере и сессии. #}
+    <a href="/dispatch/">Интерфейс диспетчера</a>
+    <a href="/docs">API</a>
+  </nav>
+  {% if request.state.user %}
+  <div style="margin-left:auto; display:flex; gap:10px; align-items:center">
+    <span class="muted">{{ request.state.user.full_name }}</span>
+    <form method="post" action="/ui/logout" style="margin:0">
+      <button class="button ghost" type="submit">Выйти</button>
+    </form>
+  </div>
+  {% endif %}
+</header>
+<main>
+  {% if ok %}<div class="flash ok">{{ ok }}</div>{% endif %}
+  {% if err %}<div class="flash err">{{ err }}</div>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+<script>
+// Подсветка поля, к которому ведёт ссылка из замечаний готовности.
+// Ссылка имеет вид #f-<имя поля>: имя совпадает с атрибутом name поля ввода,
+// поэтому подсветка работает во всех формах без правки каждой из них.
+// Перед прокруткой раскрываем свёрнутые разделы формы, содержащие поле.
+// Подсветка гаснет, как только поле тронули: она нужна, чтобы его найти.
+(function () {
+  function highlight() {
+    var hash = decodeURIComponent(window.location.hash || "");
+    if (hash.indexOf("#f-") !== 0) return;
+    var targetId = hash.slice(1);
+    var fieldName = hash.slice(3);
+    var field = document.getElementById(targetId) || Array.prototype.find.call(
+      document.querySelectorAll("[name]"),
+      function (candidate) { return candidate.getAttribute("name") === fieldName; }
+    );
+    if (!field) return;
+    if (!field.id) field.id = hash.slice(1);
+    var parent = field.parentElement;
+    while (parent) {
+      if (parent.tagName === "DETAILS") parent.open = true;
+      parent = parent.parentElement;
+    }
+    window.requestAnimationFrame(function () {
+      field.classList.add("field-highlight");
+      field.scrollIntoView({ block: "center" });
+      try { field.focus({ preventScroll: true }); } catch (e) { field.focus(); }
+    });
+    if (field.dataset.highlightBound) return;
+    field.dataset.highlightBound = "1";
+    function clear() { field.classList.remove("field-highlight"); }
+    field.addEventListener("input", clear);
+    field.addEventListener("change", clear);
+  }
+  highlight();
+  window.addEventListener("hashchange", highlight);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Подключение к общей сети с Data Gateway: DG ходит в CRM по имени контейнера
+#   http://chisto-crm:8000
+# Запуск: docker compose -f compose.yml -f compose.dg.yml up -d
+services:
+  crm:
+    networks:
+      - default
+      - plo_integrations
+
+networks:
+  plo_integrations:
+    name: ${CRM_INTEGRATION_DOCKER_NETWORK:-plo_integrations}
+    external: true

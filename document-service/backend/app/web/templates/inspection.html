@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Осмотр №{{ inspection.sequence_no }} по заявке {{ case.id }}{% endblock %}
+{% block content %}
+
+<div class="actions" style="margin-bottom:14px">
+  <a class="button ghost" href="/ui/cases/{{ case.id }}">← К заявке</a>
+  {% if available_inspection_kind and available_inspection_kind.value == "repeat" %}
+    <form method="post" action="/ui/cases/{{ case.id }}/inspections" style="display:inline">
+      <input type="hidden" name="kind" value="repeat">
+      <button type="submit" class="button ghost">Сделать повторный осмотр</button>
+    </form>
+  {% endif %}
+</div>
+
+{% if ok %}<div class="card" style="border-left:4px solid #2e7d32">{{ ok }}</div>{% endif %}
+{% if err %}<div class="card" style="border-left:4px solid #c62828">{{ err }}</div>{% endif %}
+
+<div class="card">
+  <h2>
+    {% if inspection.inspection_kind.value == "repeat" %}Повторный{% else %}Первичный{% endif %}
+    осмотр №{{ inspection.sequence_no }}
+    <span class="muted">· заявка №{{ case.case_number or case.id }}{% if case.erp_number %} · мероприятие {{ case.erp_number }}{% endif %}</span>
+  </h2>
+
+  <form method="post" action="/ui/inspections/{{ inspection.id }}">
+    <div class="grid">
+      <div><label>Дата и время осмотра</label>
+        <input type="datetime-local" name="started_at" id="started-at" value="{{ started_at_value }}"></div>
+      <div><label>Окончание осмотра</label>
+        <input type="datetime-local" name="ended_at" id="ended-at" value="{{ ended_at_value }}"></div>
+      <div><label>Место осмотра (адрес объекта)</label>
+        <input name="place" list="address-list"
+               value="{{ inspection.place_address.full_address if inspection.place_address else '' }}"
+               placeholder="г. Липецк, ул. Теперика, д. 3">
+        <datalist id="address-list">
+          {% for address in addresses %}
+            <option value="{{ address.full_address }}"></option>
+          {% endfor %}
+        </datalist>
+      </div>
+      <div><label>Вид действия</label>
+        <select name="action_type">
+          {% for value, title in action_types %}
+            <option value="{{ value }}" {% if inspection.action_type.value == value %}selected{% endif %}>{{ title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div><label>Инспектор</label>
+        <select name="inspector_id">
+          <option value="">— не выбран —</option>
+          {% for inspector in inspectors %}
+            <option value="{{ inspector.id }}"
+              {% if inspection.inspectors and inspection.inspectors[0].inspector_id == inspector.id %}selected{% endif %}>
+              {{ inspector.full_name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if inspection.inspection_kind.value == "repeat" %}
+        <div><label>Результат осмотра</label>
+          <select name="result">
+            <option value="">— не выбран —</option>
+            {% for value, title in result_choices %}
+              <option value="{{ value }}"
+                {% if inspection.inspection_result and inspection.inspection_result.value == value %}selected{% endif %}>
+                {{ title }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if inspection.inspection_kind.value == "repeat" %}
+      <div class="row"><label>Что показал повторный осмотр</label>
+        <textarea name="result_text">{{ inspection.result_text or '' }}</textarea></div>
+    {% endif %}
+
+    <h3 style="margin-top:18px">Что нарушено</h3>
+    {# Описание нарушения не вводят текстом: оно собирается из вида нарушения,
+       объекта контроля и работ с объёмами — тех же данных, из которых потом
+       собирается требование предписания. #}
+    <div class="row"><label>Вид нарушения</label>
+      <select name="violation_type_id">
+        <option value="">— не указан —</option>
+        {% for item in violation_types %}
+          <option value="{{ item.id }}"
+            {% if violation and violation.violation_type_id == item.id %}selected{% endif %}>{{ item.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="row"><label>Работы: что и сколько нужно сделать</label>
+      {% include "_works_editor.html" %}
+    </div>
+    {% if violation_description %}
+      <div class="row"><label>Так это попадёт в документы</label>
+        <div class="muted" style="font-size:13px">{{ violation_description }}</div>
+      </div>
+    {% endif %}
+    <p class="muted" style="margin:8px 0 0">
+      Ответственное лицо, квалификацию по нормам и срок устранения вносит
+      делопроизводитель — в карточке заявки. Документы для этого не нужны:
+      ответственный и срок исполнения нарушения заполняются и по заявке без
+      пакета.
+    </p>
+    {% if inspection.inspection_kind.value == "repeat" %}
+      <p class="muted" style="margin:8px 0 0">
+        Отметка «нарушение устранено» ставится по результату осмотра: если
+        выбран результат «нарушение устранено», нарушение считается снятым.
+      </p>
+    {% endif %}
+
+    <div class="actions">
+      <button type="submit">Сохранить осмотр</button>
+    </div>
+  </form>
+
+  <p class="muted" style="margin:10px 0 0">
+    Квалификация нарушения по нормам права (пункт, статья правил
+    благоустройства) заполняется в
+    <a href="/ui/cases/{{ case.id }}/edit">карточке заявки</a>.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Фотография осмотра</h2>
+  <p class="muted" style="margin-top:0">
+    На снимок наносятся адрес объекта и дата осмотра из этой карточки. Цвет
+    надписи выбирает инспектор: белая надпись видна не на каждом снимке.
+    Исходный снимок сохраняется отдельно, поэтому разметку можно нанести
+    заново — например, если дата осмотра изменится.
+  </p>
+
+  <form method="post" action="/ui/inspections/{{ inspection.id }}/photo" enctype="multipart/form-data">
+    <div class="grid">
+      <div><label>Файл фотографии</label>
+        <input type="file" name="photo" accept="image/*" required></div>
+      <div><label>Цвет надписи</label>
+        <select name="annotation_color">
+          {% for value, title in colors.items() %}
+            <option value="{{ value }}"
+              {% if photo_marked and photo_marked.annotation_color == value %}selected{% endif %}>{{ title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="submit">Загрузить и разметить</button>
+    </div>
+  </form>
+
+  {% if photo_marked %}
+    {# Адрес снимка один и тот же, а картинка после повторной разметки другая:
+       в ссылку добавляется отпечаток файла, иначе браузер показал бы прежнюю
+       копию из своего кэша. #}
+    {% set photo_version = photo_marked.file.sha256[:12] if photo_marked.file else "" %}
+    <div style="margin-top:12px">
+      <a href="/ui/inspections/{{ inspection.id }}/photo/annotated?v={{ photo_version }}" target="_blank">
+        <img src="/ui/inspections/{{ inspection.id }}/photo/annotated?v={{ photo_version }}"
+             alt="Размеченная фотография осмотра"
+             style="max-width:100%;border:1px solid #ccc">
+      </a>
+      <p class="muted" style="margin:6px 0 0">
+        Цвет надписи: {{ colors.get(photo_marked.annotation_color, "белый") }}.
+        {% if photo_original %}<a href="/ui/inspections/{{ inspection.id }}/photo/original?v={{ photo_original.file.sha256[:12] if photo_original.file else '' }}" target="_blank">Исходный снимок</a>{% endif %}
+      </p>
+      {% if photo_marked.caption %}
+        {# Что именно написано на снимке — видно, не открывая картинку. #}
+        <p class="muted" style="margin:2px 0 0">Надпись на снимке: {{ photo_marked.caption }}</p>
+      {% endif %}
+    </div>
+
+    <form method="post" action="/ui/inspections/{{ inspection.id }}/photo/remark" style="margin-top:10px">
+      <div class="actions">
+        <select name="annotation_color" style="max-width:220px">
+          {# Текущий цвет выбран заранее: иначе нажатие кнопки без изменений
+             наносило бы первый цвет из списка, а не тот, что на снимке. #}
+          {% for value, title in colors.items() %}
+            <option value="{{ value }}"
+              {% if photo_marked and photo_marked.annotation_color == value %}selected{% endif %}>{{ title }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="button ghost">Нанести разметку заново</button>
+      </div>
+    </form>
+  {% elif photo_original %}
+    <p class="muted" style="margin-top:12px">Снимок загружен без разметки.</p>
+  {% else %}
+    <p class="muted" style="margin-top:12px">Фотография ещё не загружена.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Осмотры по заявке</h2>
+  <table>
+    <thead>
+      <tr><th>№</th><th>Вид</th><th>Дата и время</th><th>Место</th><th>Результат</th><th>Снимок</th></tr>
+    </thead>
+    <tbody>
+      {% for item in case_inspections %}
+        <tr>
+          <td><a href="/ui/inspections/{{ item.id }}">{{ item.sequence_no }}</a></td>
+          <td>{{ "повторный" if item.inspection_kind.value == "repeat" else "первичный" }}</td>
+          <td>{{ item.started_at|dtr or "—" }}</td>
+          <td>{{ item.place_address.full_address if item.place_address else "—" }}</td>
+          <td>
+            {% if item.inspection_result %}
+              {{ "устранено" if item.inspection_result.value == "fixed" else "не устранено" }}
+            {% else %}—{% endif %}
+          </td>
+          <td>{% if item.files %}есть{% else %}нет{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="muted">Осмотров по заявке ещё не было.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+// Окончание осмотра по умолчанию — начало плюс 15 минут. Если начало
+// поменяли, а окончание осталось прежним (или пустым), оно сдвигается за
+// началом; поправленное руками окончание не трогаем.
+(function () {
+  const started = document.getElementById("started-at");
+  const ended = document.getElementById("ended-at");
+  if (!started || !ended) { return; }
+
+  const MINUTES = 15 * 60 * 1000;
+
+  function plusMinutes(value) {
+    const moment = new Date(value);
+    if (isNaN(moment.getTime())) { return ""; }
+    const shifted = new Date(moment.getTime() + MINUTES);
+    const pad = (number) => String(number).padStart(2, "0");
+    return `${shifted.getFullYear()}-${pad(shifted.getMonth() + 1)}-`
+         + `${pad(shifted.getDate())}T${pad(shifted.getHours())}:${pad(shifted.getMinutes())}`;
+  }
+
+  let suggestion = plusMinutes(started.value);
+  started.addEventListener("change", function () {
+    if (!ended.value || ended.value === suggestion) {
+      ended.value = plusMinutes(started.value);
+    }
+    suggestion = plusMinutes(started.value);
+  });
+})();
+</script>
+
+{% endblock %}

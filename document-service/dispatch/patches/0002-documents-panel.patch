@@ -1,0 +1,388 @@
+From d5efe44f1bd9141d1b1fd02fd6e0f6390a4dd65a Mon Sep 17 00:00:00 2001
+From: DSH <dsh@local>
+Date: Tue, 13 Oct 2026 23:49:28 +0300
+Subject: [PATCH] =?UTF-8?q?=D0=98=D0=BD=D1=82=D0=B5=D0=B3=D1=80=D0=B0?=
+ =?UTF-8?q?=D1=86=D0=B8=D1=8F:=20=D0=B4=D0=BE=D0=BA=D1=83=D0=BC=D0=B5?=
+ =?UTF-8?q?=D0=BD=D1=82=D1=8B=20=D1=81=D0=BE=D0=B1=D0=B8=D1=80=D0=B0=D0=B5?=
+ =?UTF-8?q?=D1=82=20=D1=81=D0=B5=D1=80=D0=B2=D0=B8=D1=81=20=D0=B4=D0=BE?=
+ =?UTF-8?q?=D0=BA=D1=83=D0=BC=D0=B5=D0=BD=D1=82=D0=BE=D0=B2?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Панель документов в карточке обращения и сборка пакета вместо PDF-заглушки:
+
+* entities/document: типы, API (HTTP к сервису документов и макет для стенда)
+  и панель со списком бланков, числом листов, скачиванием и архивом;
+* в карточке обращения появилась секция «Документы»;
+* кнопка «Сформировать акт и предписание» при подключённом сервисе собирает
+  настоящий пакет на бэкенде, а в режиме стенда остаётся прежняя выгрузка PDF;
+* если сервис отвечает «нужно войти», панель даёт ссылку на вход.
+---
+ src/entities/document/api/documentsApi.ts     |  40 ++++
+ src/entities/document/types.ts                |  43 +++++
+ src/entities/document/ui/DocumentsPanel.tsx   | 179 ++++++++++++++++++
+ src/entities/incident/ui/card/CardActions.tsx |  18 +-
+ .../incident/ui/card/DispatchCard.tsx         |  10 +
+ 5 files changed, 287 insertions(+), 3 deletions(-)
+ create mode 100644 src/entities/document/api/documentsApi.ts
+ create mode 100644 src/entities/document/types.ts
+ create mode 100644 src/entities/document/ui/DocumentsPanel.tsx
+
+diff --git a/src/entities/document/api/documentsApi.ts b/src/entities/document/api/documentsApi.ts
+new file mode 100644
+index 0000000..894e21f
+--- /dev/null
++++ b/src/entities/document/api/documentsApi.ts
+@@ -0,0 +1,40 @@
++import { API_URL, http } from '@/shared/api/http';
++import { EMPTY_DOCUMENTS, type IDocumentsApi, type IDocumentsState } from '../types';
++
++// Документы обращения. Сервис документов (наш бэкенд) собирает пакет по
++// официальным бланкам, считает листы и отдаёт готовые файлы; интерфейс
++// диспетчера показывает список и ссылки.
++//
++// В режиме стенда сервиса нет: панель говорит об этом, а кнопка формирования
++// документов остаётся прежней (PDF-заглушка в браузере).
++
++export function createHttpDocumentsApi(baseUrl: string): IDocumentsApi {
++  const path = (incidentId: string) =>
++    `/incidents/${encodeURIComponent(incidentId)}/documents`;
++
++  return {
++    available: true,
++    read: (incidentId) => http<IDocumentsState>(baseUrl, path(incidentId)),
++    // Сборка отвечает обращением целиком, поэтому состояние документов
++    // запрашиваем следом: так панель показывает уже собранный пакет.
++    build: async (incidentId) => {
++      await http(baseUrl, `/incidents/${encodeURIComponent(incidentId)}/act`, {
++        method: 'POST',
++        body: {},
++      });
++      return http<IDocumentsState>(baseUrl, path(incidentId));
++    },
++  };
++}
++
++export function createMockDocumentsApi(): IDocumentsApi {
++  return {
++    available: false,
++    read: async (incidentId) => ({ ...EMPTY_DOCUMENTS, incidentId }),
++    build: async (incidentId) => ({ ...EMPTY_DOCUMENTS, incidentId }),
++  };
++}
++
++export function createDocumentsApi(): IDocumentsApi {
++  return API_URL ? createHttpDocumentsApi(API_URL) : createMockDocumentsApi();
++}
+diff --git a/src/entities/document/types.ts b/src/entities/document/types.ts
+new file mode 100644
+index 0000000..2d28ab8
+--- /dev/null
++++ b/src/entities/document/types.ts
+@@ -0,0 +1,43 @@
++// Документы обращения. Их формирует сервис документов (наш бэкенд): сам
++// интерфейс диспетчера бланки не рисует — он только показывает готовый пакет
++// и даёт скачать файлы.
++
++export interface IDocumentRef {
++  id: number;
++  code: string;
++  title: string;
++  number: string;
++  issuedOn: string | null;
++  pages: number | null;
++  downloadUrl: string;
++}
++
++export interface IDocumentsState {
++  incidentId: string;
++  packageKind: string | null;
++  packageId: number | null;
++  builtAt: string | null;
++  archiveUrl: string | null;
++  documents: IDocumentRef[];
++  canBuild: boolean;
++  missing: string[];
++}
++
++export interface IDocumentsApi {
++  // Есть ли сервис документов: в режиме стенда его нет, и панель об этом честно
++  // говорит вместо пустого списка.
++  readonly available: boolean;
++  read(incidentId: string): Promise<IDocumentsState>;
++  build(incidentId: string): Promise<IDocumentsState>;
++}
++
++export const EMPTY_DOCUMENTS: IDocumentsState = {
++  incidentId: '',
++  packageKind: null,
++  packageId: null,
++  builtAt: null,
++  archiveUrl: null,
++  documents: [],
++  canBuild: false,
++  missing: [],
++};
+diff --git a/src/entities/document/ui/DocumentsPanel.tsx b/src/entities/document/ui/DocumentsPanel.tsx
+new file mode 100644
+index 0000000..b0a648c
+--- /dev/null
++++ b/src/entities/document/ui/DocumentsPanel.tsx
+@@ -0,0 +1,179 @@
++import React, { useCallback, useEffect, useState } from 'react';
++import { Archive, FileDown, FileText, Loader2, RefreshCw } from 'lucide-react';
++import { Button } from '@/components/ui/button';
++import { createDocumentsApi } from '../api/documentsApi';
++import { EMPTY_DOCUMENTS, type IDocumentsState } from '../types';
++
++// Панель документов в карточке обращения. Пакет собирает сервис документов:
++// здесь только список готовых бланков, число листов, скачивание и — если
++// собрать пока нельзя — что именно не заполнено.
++
++const documentsApi = createDocumentsApi();
++
++const stateOf = (documents: IDocumentsState): string => {
++  if (documents.packageId) return `пакет №${documents.packageId}`;
++  return 'пакет не собран';
++};
++
++const formatBuiltAt = (value: string | null): string => {
++  if (!value) return '';
++  try {
++    return new Date(value).toLocaleString('ru-RU', {
++      day: '2-digit',
++      month: '2-digit',
++      year: 'numeric',
++      hour: '2-digit',
++      minute: '2-digit',
++    });
++  } catch {
++    return value;
++  }
++};
++
++export const DocumentsPanel: React.FC<{ incidentId: string }> = ({ incidentId }) => {
++  const [documents, setDocuments] = useState<IDocumentsState>(EMPTY_DOCUMENTS);
++  const [loading, setLoading] = useState(false);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++
++  const load = useCallback(async () => {
++    if (!documentsApi.available) return;
++    setLoading(true);
++    setError(null);
++    try {
++      setDocuments(await documentsApi.read(incidentId));
++    } catch (e) {
++      setError(e instanceof Error ? e.message : 'Не удалось получить документы');
++    } finally {
++      setLoading(false);
++    }
++  }, [incidentId]);
++
++  useEffect(() => {
++    void load();
++  }, [load]);
++
++  const build = async () => {
++    setBusy(true);
++    setError(null);
++    try {
++      setDocuments(await documentsApi.build(incidentId));
++    } catch (e) {
++      setError(e instanceof Error ? e.message : 'Не удалось собрать пакет');
++    } finally {
++      setBusy(false);
++    }
++  };
++
++  // Режим стенда: сервиса документов рядом нет.
++  if (!documentsApi.available) {
++    return (
++      <p className="m-0 text-[13.5px] text-muted-foreground">
++        Демонстрационный режим: сервис документов не подключён, бланки не формируются.
++      </p>
++    );
++  }
++
++  return (
++    <div className="flex flex-col gap-3">
++      <div className="flex flex-wrap items-center justify-between gap-2">
++        <span className="font-num text-[12px] text-muted-foreground">
++          {stateOf(documents)}
++          {documents.builtAt ? ` · собран ${formatBuiltAt(documents.builtAt)}` : ''}
++          {loading ? ' · обновление…' : ''}
++        </span>
++        <div className="flex items-center gap-2">
++          {documents.archiveUrl && (
++            <a
++              href={documents.archiveUrl}
++              className="flex items-center gap-1.5 text-[13px] text-primary no-underline hover:underline"
++            >
++              <Archive className="size-4" /> Скачать архив
++            </a>
++          )}
++          {!documents.packageId && documents.canBuild && (
++            <Button onClick={build} disabled={busy} className="h-auto min-h-9 py-2 text-[13.5px]">
++              {busy ? <Loader2 className="animate-spin" /> : <FileDown />} Собрать пакет документов
++            </Button>
++          )}
++          {documents.packageId && (
++            <Button
++              onClick={build}
++              disabled={busy || !documents.canBuild}
++              variant="outline"
++              className="h-auto min-h-9 bg-transparent py-2 text-[13.5px]"
++            >
++              {busy ? <Loader2 className="animate-spin" /> : <RefreshCw />} Собрать заново
++            </Button>
++          )}
++        </div>
++      </div>
++
++      {documents.documents.length > 0 ? (
++        <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
++          {documents.documents.map((document) => (
++            <li
++              key={document.id}
++              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-[var(--inset)] px-3 py-2"
++            >
++              <span className="flex min-w-0 items-center gap-2">
++                <FileText className="size-4 shrink-0 text-muted-foreground" />
++                <span className="min-w-0">
++                  <span className="block truncate text-[13.5px] text-foreground">{document.title}</span>
++                  <span className="font-num block text-[11.5px] text-muted-foreground">
++                    {document.number ? `№ ${document.number}` : 'номер не присвоен'}
++                    {document.issuedOn ? ` · ${document.issuedOn.split('-').reverse().join('.')}` : ''}
++                    {document.pages ? ` · ${document.pages} л.` : ' · листы не посчитаны'}
++                  </span>
++                </span>
++              </span>
++              <a
++                href={document.downloadUrl}
++                className="shrink-0 text-[13px] text-primary no-underline hover:underline"
++              >
++                Скачать
++              </a>
++            </li>
++          ))}
++        </ul>
++      ) : (
++        !loading && (
++          <p className="m-0 text-[13.5px] text-muted-foreground">
++            {documents.canBuild
++              ? 'Пакет ещё не собран. Документы формируются по официальным бланкам.'
++              : 'Пакет пока нельзя собрать.'}
++          </p>
++        )
++      )}
++
++      {documents.missing.length > 0 && (
++        <div
++          className="rounded-md px-3 py-2.5 text-[13px] text-danger"
++          style={{ background: 'var(--st-knm-bg)' }}
++        >
++          <div className="font-semibold">Что нужно заполнить в сервисе документов:</div>
++          <ul className="m-0 mt-1.5 list-disc pl-4">
++            {documents.missing.slice(0, 6).map((item) => (
++              <li key={item}>{item}</li>
++            ))}
++          </ul>
++        </div>
++      )}
++
++      {error && (
++        <p role="alert" className="m-0 text-[13px] text-danger">
++          {error}
++          {/* Сервис документов закрыт сессией: без входа он отвечает 401. */}
++          {/вход|войти|Unauthorized|401/i.test(error) && (
++            <>
++              {' '}
++              <a href="/ui/login" className="text-primary no-underline hover:underline">
++                Войти в сервис документов
++              </a>
++            </>
++          )}
++        </p>
++      )}
++    </div>
++  );
++};
+diff --git a/src/entities/incident/ui/card/CardActions.tsx b/src/entities/incident/ui/card/CardActions.tsx
+index aacfc5f..9617caf 100644
+--- a/src/entities/incident/ui/card/CardActions.tsx
++++ b/src/entities/incident/ui/card/CardActions.tsx
+@@ -9,9 +9,13 @@ import { isDeadlineFixed, resolveDeadlineHours, type DeadlineHours } from '../..
+ import { can, type Actor, type IncidentAction } from '../../lib/workflow';
+ import { useNow } from '@/shared/lib/time';
+ import { useAuthStore } from '@/entities/user/model/authStore';
++import { createDocumentsApi } from '@/entities/document/api/documentsApi';
+ import { PhotoReportForm } from './PhotoReportForm';
+ import afterPhoto from '@/assets/demo/kp-after.svg';
+ 
++// Сервис документов: если он подключён, бланки формирует бэкенд.
++const documentsApi = createDocumentsApi();
++
+ // Нижняя панель карточки: что может сделать текущая роль с делом в текущем статусе.
+ // Доступность кнопок — из правил lib/workflow.ts, тех же, что проверяет API.
+ 
+@@ -193,8 +197,14 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
+               onClick={async () => {
+                 setDocError(null);
+                 try {
+-                  const { generateKnmAct } = await import('../../lib/generateKnmAct');
+-                  await generateKnmAct(incident, userName);
++                  // С подключённым сервисом документов пакет собирает он:
++                  // s.issueKnmAct отправляет действие на бэкенд, а тот
++                  // формирует настоящие бланки с номерами и QR-кодом.
++                  // В режиме стенда остаётся прежняя выгрузка PDF в браузере.
++                  if (!documentsApi.available) {
++                    const { generateKnmAct } = await import('../../lib/generateKnmAct');
++                    await generateKnmAct(incident, userName);
++                  }
+                   await s.issueKnmAct(id);
+                 } catch (e) {
+                   setDocError(e instanceof Error ? e.message : 'Не удалось сформировать документы');
+@@ -202,7 +212,9 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
+               }}
+               className={primary}
+             >
+-              <FileDown /> Сформировать акт и предписание (PDF)
++              <FileDown /> {documentsApi.available
++                ? 'Сформировать акт и предписание'
++                : 'Сформировать акт и предписание (PDF)'}
+             </Button>
+           )}
+           {docError && <p role="alert" className="m-0 text-[13px] text-danger">{docError}</p>}
+diff --git a/src/entities/incident/ui/card/DispatchCard.tsx b/src/entities/incident/ui/card/DispatchCard.tsx
+index b637d59..5fa15f6 100644
+--- a/src/entities/incident/ui/card/DispatchCard.tsx
++++ b/src/entities/incident/ui/card/DispatchCard.tsx
+@@ -7,6 +7,7 @@ import { useCardModel, sourceLine } from './cardModel';
+ import { CardActions } from './CardActions';
+ import { ReportMeta } from './PhotoReportForm';
+ import { AiToggle, HistoryList, KpValue, PhotoEvidence, ResponsiblesList, SlaMeter } from './parts';
++import { DocumentsPanel } from '@/entities/document/ui/DocumentsPanel';
+ 
+ // «Диспетчерская»: карточка — стеклянная панель над картой.
+ // Вверху светится полоса цвета стадии, цифры моноширинные, фото в видоискателе.
+@@ -90,6 +91,15 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
+           <ResponsiblesList incident={inc} />
+         </Section>
+ 
++        {/* Документы собирает сервис документов; key — чтобы панель
++            перечитала список после того, как пакет собрали из действий. */}
++        <Section title="Документы">
++          <DocumentsPanel
++            key={`${inc.id}-${inc.timeline.history?.length ?? 0}`}
++            incidentId={inc.id}
++          />
++        </Section>
++
+         <Section title="Хроника">
+           <HistoryList history={inc.timeline.history} />
+         </Section>
+-- 
+2.45.1.windows.1
+

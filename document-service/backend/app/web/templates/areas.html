@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Управы<datalist id="area-address-options">
+  {% for address in addresses_for_choice %}
+    <option value="{{ address.full_address }}"></option>
+  {% endfor %}
+  {% for address in found_addresses %}
+    <option value="{{ address.full_address }}"></option>
+  {% endfor %}
+</datalist>
+{% endblock %}
+{% block content %}
+
+<h2>Управы</h2>
+
+{% macro value_actions(item) %}
+<form method="post"
+      action="/ui/dictionaries/areas/{{ item.id }}/{{ 'restore' if is_archived(item) else 'delete' }}"
+      style="display:inline">
+  <button type="submit" class="button ghost" style="padding:2px 8px">
+    {{ "Вернуть" if is_archived(item) else "Удалить" }}
+  </button>
+</form>
+{% endmacro %}
+
+<div class="card">
+  <h3>Новая управа</h3>
+  <form method="post" action="/ui/areas">
+    <div class="grid">
+      <div><label>Название *</label>
+        <input name="name" required placeholder="Управа Советского района"></div>
+      <div><label>Орган контроля</label>
+        <select name="control_body_id">
+          <option value="">— не указан —</option>
+          {% for body in control_bodies %}<option value="{{ body.id }}">{{ body.name }}</option>{% endfor %}
+        </select></div>
+      {# Адрес управы — место составления протокола об административном
+         правонарушении по её заявкам. Выбирается из справочника адресов. #}
+      {# Адрес управы: он же место составления протокола и место явки.
+         Вводится строкой — запись найдётся в справочнике адресов или
+         заведётся сама. #}
+      <div><label>Адрес управы (место протокола и явки)</label>
+        <input name="area_address" list="area-address-options"
+               placeholder="г. Липецк, ул. …"></div>
+      <div><label>Номер кабинета</label>
+        <input name="office" placeholder="207"></div>
+    </div>
+    <div class="actions" style="margin-top:10px"><button type="submit">Создать управу</button></div>
+  </form>
+</div>
+
+{% for area in areas %}
+<div class="card" {% if is_archived(area) %}style="background:#f7f7f9"{% endif %}>
+  <h3>
+    {{ area.name }}
+    {% if area.control_body %}<span class="muted">· {{ area.control_body.name }}</span>{% endif %}
+    {% if is_archived(area) %}<span class="muted">— в архиве</span>{% endif %}
+  </h3>
+
+  <div class="grid">
+    <div>
+      <label>Название</label>
+      <form method="post" action="/ui/areas">
+        <input type="hidden" name="id" value="{{ area.id }}">
+        <input name="name" value="{{ area.name }}" style="margin-bottom:4px">
+        <select name="control_body_id" style="margin-bottom:4px">
+          <option value="">— орган контроля не указан —</option>
+          {% for body in control_bodies %}
+            <option value="{{ body.id }}" {% if area.control_body_id == body.id %}selected{% endif %}>{{ body.name }}</option>
+          {% endfor %}
+        </select>
+        {# Адрес управы: он печатается как место составления протокола. #}
+        <input name="area_address" list="area-address-options"
+               value="{{ area.address.full_address if area.address else '' }}"
+               placeholder="адрес управы" style="margin-bottom:4px">
+        <input name="office" value="{{ area.office or '' }}" placeholder="кабинет" style="margin-bottom:4px">
+        <button type="submit" class="button ghost">Сохранить</button>
+      </form>
+    </div>
+
+    <div>
+      <label>Адреса управы ({{ area.addresses|length }})</label>
+      <table style="margin-bottom:6px">
+        <tbody>
+        {% for link in area.addresses %}
+          <tr>
+            <td>{{ link.address.full_address if link.address else "—" }}</td>
+            <td style="width:40px">
+              <form method="post" action="/ui/areas/{{ area.id }}/addresses/{{ link.id }}/delete">
+                <button type="submit" class="button ghost" style="padding:2px 8px">×</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td class="muted">Адреса не добавлены — заявки не попадут на управу</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <form method="get" action="/ui/areas" class="actions">
+        <input type="hidden" name="area" value="{{ area.id }}">
+        <input name="q" value="{{ address_query }}" placeholder="найти адрес: улица, дом"
+               style="max-width:240px">
+        <button type="submit" class="button ghost">Найти</button>
+      </form>
+      {% if address_query %}
+        <div style="margin-top:6px">
+          {% for found in found_addresses %}
+            <form method="post" action="/ui/areas/{{ area.id }}/addresses"
+                  style="display:flex; gap:6px; align-items:center; margin-bottom:3px">
+              <input type="hidden" name="address_id" value="{{ found.id }}">
+              <span style="flex:1">{{ found.full_address }}</span>
+              <button type="submit" class="button ghost" style="padding:2px 8px">добавить</button>
+            </form>
+          {% else %}
+            <div class="muted">Ничего не найдено. Введите адрес вручную:</div>
+            <form method="post" action="/ui/areas/{{ area.id }}/addresses"
+                  style="display:flex; gap:6px; margin-top:4px">
+              <input name="full_address" value="{{ address_query }}" style="flex:1">
+              <button type="submit" class="button ghost">завести и добавить</button>
+            </form>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div>
+      <label>Инспекторы управы</label>
+      <table style="margin-bottom:6px">
+        <tbody>
+        {% for link in area.inspectors %}
+          <tr {% if link.valid_to %}style="color:#6b7280"{% endif %}>
+            <td>{{ link.inspector.full_name if link.inspector else link.inspector_id }}
+              {% if link.valid_to %}<span class="muted">— период закрыт</span>{% endif %}
+            </td>
+            <td style="width:40px">
+              {% if not link.valid_to %}
+                <form method="post" action="/ui/areas/{{ area.id }}/inspectors/{{ link.id }}/delete">
+                  <button type="submit" class="button ghost" style="padding:2px 8px">×</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td class="muted">Инспекторы не закреплены</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <form method="post" action="/ui/areas/{{ area.id }}/inspectors"
+            style="display:flex; gap:6px">
+        <select name="inspector_id" style="flex:1">
+          {% for person in inspectors %}
+            <option value="{{ person.id }}">{{ person.full_name }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="button ghost">закрепить</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="actions" style="margin-top:10px">{{ value_actions(area) }}</div>
+</div>
+{% else %}
+<div class="card"><p class="muted">Управ пока нет — создайте первую.</p></div>
+{% endfor %}
+
+{% endblock %}

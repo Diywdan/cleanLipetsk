@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Системный администратор · Чистый Липецк</title>
+  <link rel="stylesheet" href="admin.css?v=0.5.0">
+  <script>
+    // Тема до первой отрисовки, чтобы не мигало: сохранённая или системная
+    (function () {
+      var saved = null;
+      try { saved = localStorage.getItem('crm-admin-theme'); } catch (e) { /* хранилище недоступно */ }
+      var dark = saved ? saved === 'dark' : !window.matchMedia('(prefers-color-scheme: light)').matches;
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    })();
+  </script>
+</head>
+<body>
+  <!-- Вход -->
+  <section id="login" class="login" hidden>
+    <form id="login-form" class="login-card" autocomplete="on">
+      <div class="brand brand-lg">
+        <span class="brand-mark" aria-hidden="true">ЧЛ</span>
+        <div><strong>Чистый Липецк</strong><small>Консоль системного администратора</small></div>
+      </div>
+      <label class="field"><span>Логин</span><input name="username" autocomplete="username" required></label>
+      <label class="field"><span>Пароль</span><input name="password" type="password" autocomplete="current-password" required></label>
+      <p id="login-error" class="form-error" role="alert" hidden></p>
+      <button class="btn primary wide" type="submit">Войти</button>
+      <a class="muted-link" href="/">Рабочее место «Диспетчерская» →</a>
+    </form>
+  </section>
+
+  <!-- Консоль -->
+  <div id="shell" class="shell" hidden>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">ЧЛ</span>
+        <div><strong>Чистый Липецк</strong><small>Системный администратор</small></div>
+      </div>
+      <nav id="nav" aria-label="Разделы"></nav>
+      <div id="dg-chip" class="dg-chip" hidden></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="titles">
+          <h1 id="page-title">Обзор</h1>
+          <p id="page-subtitle"></p>
+        </div>
+        <div class="top-actions">
+          <a class="btn ghost" href="/" target="_blank" rel="noopener">Диспетчерская ↗</a>
+          <button id="theme" class="btn ghost icon" type="button" title="Сменить тему" aria-label="Сменить тему">◐</button>
+          <div id="me" class="me"></div>
+          <button id="logout" class="btn ghost" type="button">Выйти</button>
+        </div>
+      </header>
+      <div id="content" class="content" tabindex="-1"></div>
+    </main>
+  </div>
+
+  <dialog id="dialog">
+    <form id="dialog-form" method="dialog">
+      <div class="dialog-head">
+        <div><small id="dialog-kicker" class="eyebrow"></small><h2 id="dialog-title"></h2></div>
+        <button type="button" class="btn ghost icon" data-close aria-label="Закрыть">×</button>
+      </div>
+      <div id="dialog-body" class="dialog-body"></div>
+      <p id="dialog-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn ghost" data-close>Отмена</button>
+        <button id="dialog-submit" class="btn primary" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="admin.js?v=0.5.0"></script>
+</body>
+</html>

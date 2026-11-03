@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}{{ organization.short_name }}{% endblock %}
+{% block content %}
+
+{% macro value_actions(kind, item) %}
+<form method="post"
+      action="/ui/dictionaries/{{ kind }}/{{ item.id }}/{{ 'restore' if is_archived(item) else 'delete' }}"
+      style="display:inline; margin-left:6px">
+  <button type="submit" class="button ghost" style="padding:2px 8px">
+    {{ "Вернуть" if is_archived(item) else "Удалить" }}
+  </button>
+</form>
+{% endmacro %}
+
+<div class="actions" style="margin-bottom:14px">
+  <a class="button ghost" href="/ui/dictionaries">← К справочникам</a>
+</div>
+
+<h2>{{ organization.short_name }}</h2>
+<p class="muted">
+  ИНН {{ organization.inn or "—" }} · КПП {{ organization.kpp or "—" }} ·
+  ОГРН {{ organization.ogrn or "—" }} · {{ organization.kind.value }}
+</p>
+
+<div class="card">
+  <h3>Карточка организации</h3>
+  <form method="post" action="/ui/dictionaries/organizations/{{ organization.id }}">
+    <div class="grid">
+      <div><label>Краткое наименование</label>
+        <input name="short_name" value="{{ organization.short_name }}"></div>
+      <div><label>Полное наименование</label>
+        <input name="full_name" value="{{ organization.full_name or '' }}"></div>
+      <div><label>ИНН</label><input id="f-organization-inn" name="inn" value="{{ organization.inn or '' }}"></div>
+      <div><label>КПП</label><input name="kpp" value="{{ organization.kpp or '' }}"></div>
+      <div><label>ОГРН</label><input name="ogrn" value="{{ organization.ogrn or '' }}"></div>
+      <div><label>Юридический адрес (в реквизитах)</label>
+        <select id="f-organization-legal-address" name="legal_address_id">
+          <option value="">— не указан —</option>
+          {% for item in addresses %}
+            <option value="{{ item.id }}"
+              {% for req in requisites %}{% if req.valid_to is none and req.unit_id is none and req.legal_address_id == item.id %}selected{% endif %}{% endfor %}>
+              {{ item.full_address }}
+            </option>
+          {% endfor %}
+        </select></div>
+      <div><label>Юридический адрес строкой</label>
+        <input name="legal_address"
+               placeholder="если адреса нет в списке — введите его целиком"></div>
+      <div><label>Электронная почта для отправки</label>
+        <input name="email" placeholder="например, info@example.ru"></div>
+    </div>
+    <div class="actions" style="margin-top:10px"><button type="submit">Сохранить</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Реквизиты ({{ requisites|length }})</h3>
+  <table>
+    <thead><tr><th>Относится к</th><th>ИНН</th><th>КПП</th><th>Юридический адрес</th><th>Действуют с</th><th>по</th></tr></thead>
+    <tbody>
+    {% for item in requisites %}
+      <tr><td>{{ item.unit.name if item.unit else "организация" }}</td>
+          <td>{{ item.inn or "—" }}</td><td>{{ item.kpp or "—" }}</td>
+          <td>{{ item.legal_address.full_address if item.legal_address else "—" }}</td>
+          <td>{{ item.valid_from|dtr }}</td>
+          <td>{{ item.valid_to|dtr or "действуют" }}</td></tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">Реквизитов нет — документы не соберутся</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="margin:10px 0 0">
+    Если контрольное мероприятие проводится в отношении филиала, нужны
+    <b>реквизиты филиала</b>: у него свой ИНН и КПП, и в акт попадают именно они.
+  </p>
+  {% if units %}
+  <form method="post"
+        action="/ui/dictionaries/organizations/{{ organization.id }}/requisites"
+        style="margin-top:12px">
+    <div class="grid">
+      <div><label>Подразделение *</label>
+        <select name="unit_id" required>
+          {% for item in units %}<option value="{{ item.id }}">{{ item.name }}</option>{% endfor %}
+        </select></div>
+      <div><label>ИНН подразделения</label><input name="inn"></div>
+      <div><label>КПП подразделения</label><input name="kpp"></div>
+      <div><label>Юридический адрес</label>
+        <select name="legal_address_id">
+          <option value="">— не указан —</option>
+          {% for item in addresses %}<option value="{{ item.id }}">{{ item.full_address }}</option>{% endfor %}
+        </select></div>
+      <div><label>Действуют с</label><input type="date" name="valid_from"></div>
+    </div>
+    <div class="actions" style="margin-top:10px">
+      <button type="submit">Сохранить реквизиты подразделения</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Контакты ({{ contacts|length }})</h3>
+  <table>
+    <thead><tr><th>Вид</th><th>Значение</th><th>Назначение</th><th>Подразделение</th></tr></thead>
+    <tbody>
+    {% for item in contacts %}
+      <tr><td>{{ item.kind.value }}</td><td>{{ item.value }}</td>
+          <td>{{ item.purpose.value }}</td>
+          <td>{{ item.unit.name if item.unit else "организация" }}</td></tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">Почты нет — акт и направление не соберутся</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Подразделения (филиалы) — {{ units|length }}</h3>
+  <table>
+    <thead><tr><th style="width:50px">№</th><th>Вид</th><th>Название</th><th>Адрес</th><th>Почта для документов</th></tr></thead>
+    <tbody>
+    {% for item in units %}
+      {% set unit_email = namespace(value='') %}
+      {% for contact in contacts %}
+        {% if contact.unit_id == item.id and contact.kind.value == 'email' and contact.is_active %}
+          {% set unit_email.value = contact.value %}
+        {% endif %}
+      {% endfor %}
+      <tr {% if is_archived(item) %}style="background:#f7f7f9; color:#6b7280"{% endif %}>
+        <td>{{ item.id }}</td><td>{{ item.kind.value }}</td><td>{{ item.name }}</td>
+          <td>{{ item.address.full_address if item.address else "—" }}{{ value_actions("units", item) }}</td>
+          <td>
+            {% if unit_email.value %}
+              {{ unit_email.value }}
+            {% else %}
+              <form method="post" action="/ui/dictionaries/organizations/{{ organization.id }}/units" style="display:flex; gap:6px; align-items:center">
+                <input type="hidden" name="id" value="{{ item.id }}">
+                <input type="hidden" name="name" value="{{ item.name }}">
+                <input type="email" id="f-unit-email-{{ item.id }}" name="email" required placeholder="почта филиала">
+                <button type="submit" class="button ghost">Сохранить</button>
+              </form>
+            {% endif %}
+          </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">Подразделений нет</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/ui/dictionaries/organizations/{{ organization.id }}/units" style="margin-top:12px">
+    <div class="grid">
+      <div><label>Вид</label>
+        <select name="kind">
+          <option value="branch">филиал</option>
+          <option value="representation">представительство</option>
+          <option value="separate_unit">обособленное подразделение</option>
+        </select></div>
+      <div><label>Название *</label>
+        <input name="name" required placeholder="филиал АО «РИР Энерго»-«Липецкая генерация»"></div>
+      <div><label>Адрес</label>
+        <select name="address_id">
+          <option value="">— не указан —</option>
+          {% for item in addresses %}<option value="{{ item.id }}">{{ item.full_address }}</option>{% endfor %}
+        </select></div>
+      <div><label>Почта подразделения</label><input name="email"></div>
+    </div>
+    <div class="actions" style="margin-top:10px"><button type="submit">Добавить подразделение</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Представители ({{ representatives|length }})</h3>
+  <table>
+    <thead><tr><th style="width:50px">№</th><th>ФИО</th><th>Должность</th><th>Основание</th><th>Действует с</th></tr></thead>
+    <tbody>
+    {% for item in representatives %}
+      <tr {% if is_archived(item) %}style="background:#f7f7f9; color:#6b7280"{% endif %}>
+        <td>{{ item.id }}</td><td>{{ item.full_name }}</td><td>{{ item.position }}</td>
+          <td>{{ item.basis_kind.value if item.basis_kind else "—" }}
+              {{ item.basis_number or "" }}</td>
+          <td>{{ item.valid_from|dtr }}{{ value_actions("representatives", item) }}</td></tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">Представителей нет</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/ui/dictionaries/organizations/{{ organization.id }}/representatives" style="margin-top:12px">
+    <div class="grid">
+      <div><label>ФИО *</label><input name="full_name" required></div>
+      <div><label>Должность *</label><input name="position" required></div>
+      <div><label>Подразделение</label>
+        <select name="unit_id">
+          <option value="">— организация целиком —</option>
+          {% for item in units %}<option value="{{ item.id }}">{{ item.name }}</option>{% endfor %}
+        </select></div>
+      <div><label>Основание полномочий</label>
+        <select name="basis_kind">
+          <option value="">— не указано —</option>
+          {% for code, title in basis_kinds %}<option value="{{ code }}">{{ title }}</option>{% endfor %}
+        </select></div>
+      <div><label>Номер документа-основания</label><input name="basis_number"></div>
+      <div><label>Дата документа-основания</label><input type="date" name="basis_date"></div>
+      <div><label>Действует с</label><input type="date" name="valid_from"></div>
+    </div>
+    <div class="actions" style="margin-top:10px"><button type="submit">Добавить представителя</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Роли организации ({{ roles|length }})</h3>
+  <table>
+    <thead><tr><th style="width:50px">№</th><th>Роль</th><th>Подразделение</th><th>Действует с</th></tr></thead>
+    <tbody>
+    {% for item in roles %}
+      <tr {% if is_archived(item) %}style="background:#f7f7f9; color:#6b7280"{% endif %}>
+        <td>{{ item.id }}</td><td>{{ item.role.value }}</td>
+          <td>{{ item.unit.name if item.unit else "организация" }}</td>
+          <td>{{ item.valid_from|dtr }}{{ value_actions("roles", item) }}</td></tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">Роли не заданы</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/ui/dictionaries/organizations/{{ organization.id }}/roles" style="margin-top:12px">
+    <div class="grid">
+      <div><label>Роль *</label>
+        <select name="role" required>
+          {% for code in role_codes %}<option value="{{ code }}">{{ code }}</option>{% endfor %}
+        </select></div>
+      <div><label>Подразделение</label>
+        <select name="unit_id">
+          <option value="">— организация целиком —</option>
+          {% for item in units %}<option value="{{ item.id }}">{{ item.name }}</option>{% endfor %}
+        </select></div>
+      <div><label>Действует с</label><input type="date" name="valid_from"></div>
+    </div>
+    <div class="actions" style="margin-top:10px"><button type="submit">Добавить роль</button></div>
+  </form>
+</div>
+
+{% endblock %}

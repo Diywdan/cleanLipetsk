@@ -1,0 +1,71 @@
+From f8d01c8fb2d7237b27395e6f6bc3ba457f4e5c7e Mon Sep 17 00:00:00 2001
+From: DSH <dsh@local>
+Date: Wed, 14 Oct 2026 01:26:13 +0300
+Subject: [PATCH] =?UTF-8?q?=D0=98=D0=BD=D1=82=D0=B5=D0=B3=D1=80=D0=B0?=
+ =?UTF-8?q?=D1=86=D0=B8=D1=8F:=20=D0=B0=D0=B4=D1=80=D0=B5=D1=81=20=D0=B1?=
+ =?UTF-8?q?=D0=B5=D0=B7=20=D0=BA=D0=BE=D0=BE=D1=80=D0=B4=D0=B8=D0=BD=D0=B0?=
+ =?UTF-8?q?=D1=82=20=E2=80=94=20=D0=B1=D0=B5=D0=B7=20=D0=BC=D0=B5=D1=82?=
+ =?UTF-8?q?=D0=BA=D0=B8=20=D0=BD=D0=B0=20=D0=BA=D0=B0=D1=80=D1=82=D0=B5?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+У адреса может не быть геометки (координаты заполняют в справочнике адресов).
+Раньше такой адрес давал пару 0, 0, и метка уезжала в океан.
+
+* IGeoLocation.coordinates допускает null;
+* метки ставятся только для обращений с координатами;
+* расстояние до площадки в фотоотчёте считается при известных координатах.
+---
+ src/entities/incident/types/index.ts              | 3 ++-
+ src/entities/incident/ui/card/PhotoReportForm.tsx | 5 ++++-
+ src/widgets/map-radar/lib/useIncidentMarkers.ts   | 3 +++
+ 3 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/src/entities/incident/types/index.ts b/src/entities/incident/types/index.ts
+index 29b55f0..eaf79ba 100644
+--- a/src/entities/incident/types/index.ts
++++ b/src/entities/incident/types/index.ts
+@@ -40,7 +40,8 @@ export interface IGeoLocation {
+   address: string;
+   // [долгота, широта] — порядок Яндекс Карт v3. ФГИС УТКО и большинство реестров отдают
+   // широту первой: при загрузке реальных данных пару нужно развернуть.
+-  coordinates: [number, number];
++  // null — координат нет (адрес без геометки): метку на карте не ставим.
++  coordinates: [number, number] | null;
+   cadastralNumber?: string;      // Кадастровый номер для подсветки полигона ответственности УК
+   upravaId: number; // номер управы
+   houseFias?: string;            // ФИАС дома, если сигнал пришёл по дому (домовой чат, ПОС)
+diff --git a/src/entities/incident/ui/card/PhotoReportForm.tsx b/src/entities/incident/ui/card/PhotoReportForm.tsx
+index 8b2349e..f7ed23a 100644
+--- a/src/entities/incident/ui/card/PhotoReportForm.tsx
++++ b/src/entities/incident/ui/card/PhotoReportForm.tsx
+@@ -44,7 +44,10 @@ export const PhotoReportForm: React.FC<{
+       photoUrl: url,
+       takenAt: at,
+       coords: coords ?? undefined,
+-      distanceM: coords ? distanceM(coords, incident.location.coordinates) : undefined,
++      distanceM:
++        coords && incident.location.coordinates
++          ? distanceM(coords, incident.location.coordinates)
++          : undefined,
+     };
+     await onSubmit(report);
+     setBusy(false);
+diff --git a/src/widgets/map-radar/lib/useIncidentMarkers.ts b/src/widgets/map-radar/lib/useIncidentMarkers.ts
+index 6959548..625b7f7 100644
+--- a/src/widgets/map-radar/lib/useIncidentMarkers.ts
++++ b/src/widgets/map-radar/lib/useIncidentMarkers.ts
+@@ -32,6 +32,9 @@ export function useIncidentMarkers(mapReady: boolean, mapRef: React.RefObject<YM
+     );
+ 
+     ordered.forEach((incident) => {
++      // Адрес без координат: метку поставить некуда — снимок всё равно
++      // показал бы точку в океане.
++      if (!incident.location.coordinates) return;
+       const isSelected = selectedIncident?.id === incident.id;
+       const markerElement = createMarkerElement(
+         incident.status,
+-- 
+2.45.1.windows.1
+
