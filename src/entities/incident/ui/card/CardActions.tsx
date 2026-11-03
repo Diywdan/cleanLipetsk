@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle2, FileDown, Gavel } from 'lucide-react';
+import { CheckCircle2, Gavel } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { IIncident } from '../../types';
 import type { UserRole } from '@/entities/user/types';
@@ -28,7 +28,6 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
   const [deadline, setDeadline] = useState<DeadlineHours>(48);
   const [step, setStep] = useState<'dismiss' | 'return' | null>(null);
   const [comment, setComment] = useState('');
-  const [isGeneratingKnmPackage, setIsGeneratingKnmPackage] = useState(false);
   const knmDocuments = getKnmPackageDocuments(incident);
   const knmPackageStatus = incident.knmPackage?.status?.trim();
   const knmReadinessErrors = incident.knmPackage?.readinessErrors?.filter((message) => typeof message === 'string' && message.trim());
@@ -220,6 +219,7 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
       return (
         <div className="flex flex-col gap-3">
           {note('bad', 'Срок устранения истёк. Материалы готовятся к передаче на контрольно-надзорное мероприятие.')}
+          {role === 'INSPECTOR' && <DocumentServicePanel incident={incident} />}
           {knmDocuments && (
             <div className="flex flex-col gap-2">
               <p className="m-0 text-[14px] text-success">Пакет №{knmDocuments.packageId} сформирован.</p>
@@ -251,22 +251,10 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
               )}
             </div>
           )}
-          {allowed('ISSUE_ACT') && (
-            <Button
-              disabled={isGeneratingKnmPackage}
-              onClick={async () => {
-                s.clearError();
-                setIsGeneratingKnmPackage(true);
-                try {
-                  await s.issueKnmAct(id);
-                } finally {
-                  setIsGeneratingKnmPackage(false);
-                }
-              }}
-              className={primary}
-            >
-              <FileDown /> {isGeneratingKnmPackage ? 'Запрос к CRM…' : 'Сформировать пакет КНМ'}
-            </Button>
+          {role === 'INSPECTOR' && (
+            <p className="m-0 text-[12px] text-muted-foreground">
+              Заполнение замечаний и формирование документов выполняются через Document Service. Кнопка формирования пакета удалена: она только добавляла запись в историю CRM.
+            </p>
           )}
         </div>
       );
@@ -278,7 +266,7 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
     if (status === 'IN_PROGRESS') return (
       <>
         {hint(role === 'INSPECTOR' ? 'Ждём фотоотчёт исполнителя.' : 'Срок вышел — решение за инспектором.')}
-        {role === 'INSPECTOR' && incident.document_service && <DocumentServicePanel incident={incident} />}
+        {role === 'INSPECTOR' && <DocumentServicePanel incident={incident} />}
       </>
     );
     if (status === 'VERIFICATION') return hint('Фотоотчёт отправлен, инспектор проверяет.');
