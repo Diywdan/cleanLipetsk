@@ -20,7 +20,10 @@ RUN apt-get update \
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+# Где pypi.org недоступен (сеть ЦОД), индекс подменяется при сборке:
+#   docker compose build --build-arg PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ARG PIP_INDEX_URL=https://pypi.org/simple
+RUN pip install --no-cache-dir --index-url "$PIP_INDEX_URL" --retries 10 --timeout 30 -r requirements.txt
 
 COPY app ./app
 COPY alembic ./alembic

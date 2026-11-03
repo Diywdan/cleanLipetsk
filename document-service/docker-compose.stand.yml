@@ -1,0 +1,11 @@
+# Стенд CRM «Чистый Липецк» (ВМ 10.248.55.165): только postgres и backend, без nginx и сертификатов.
+# Backend открыт на 18085: туда браузер приходит по SSO-билету из CRM (CRM_DOCUMENT_SERVICE_PUBLIC_URL),
+# а CRM ходит в него по сети chisto-document-service (http://document-service-backend:8000).
+# Запуск:
+#   docker compose -f docker-compose.yml -f docker-compose.stand.yml build --build-arg PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ backend
+#   docker compose -f docker-compose.yml -f docker-compose.stand.yml up -d postgres backend
+services:
+  backend:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports: !override
+      - "${DOCUMENT_SERVICE_BIND_HOST:-0.0.0.0}:${DOCUMENT_SERVICE_HOST_PORT:-18085}:8000"
