@@ -1,5 +1,5 @@
-import React, { Suspense, lazy, useMemo } from 'react';
-import { Search, X, Radio, AlertTriangle, Repeat2, Hourglass, Download } from 'lucide-react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
+import { Search, X, Radio, AlertTriangle, Repeat2, Hourglass, Download, PanelLeftClose, PanelRightClose } from 'lucide-react';
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
 import { useFilterStore, useFilteredIncidents } from '@/entities/incident/model/filterStore';
 import { useAuthStore } from '@/entities/user/model/authStore';
@@ -216,7 +216,77 @@ const FeedRow: React.FC<{ incident: IIncident; now: number; selected: boolean; o
   );
 };
 
-const LeftPanel: React.FC = () => {
+/* ── Сворачивание панелей: карту можно открыть целиком, выбор помнит браузер ── */
+
+type PanelSide = 'left' | 'right';
+const PANELS_KEY = 'chisto.panels.v1';
+
+function readHidden(): Record<PanelSide, boolean> {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PANELS_KEY) || '{}');
+    return { left: saved.left === true, right: saved.right === true };
+  } catch {
+    return { left: false, right: false };
+  }
+}
+
+function useHiddenPanels() {
+  const [hidden, setHidden] = useState(readHidden);
+  const toggle = (side: PanelSide) =>
+    setHidden((prev) => {
+      const next = { ...prev, [side]: !prev[side] };
+      try {
+        localStorage.setItem(PANELS_KEY, JSON.stringify(next));
+      } catch {
+        /* хранилище недоступно — помним до перезагрузки */
+      }
+      return next;
+    });
+  return [hidden, toggle] as const;
+}
+
+const HideButton: React.FC<{ side: PanelSide; onClick: () => void }> = ({ side, onClick }) => {
+  const Icon = side === 'left' ? PanelLeftClose : PanelRightClose;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Свернуть панель — карта откроется шире"
+      aria-label="Свернуть панель"
+      className="grid size-6 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground"
+    >
+      <Icon className="size-3.5" />
+    </button>
+  );
+};
+
+// Свёрнутая панель — стеклянная кнопка у края карты с главным числом
+const CollapsedPanel: React.FC<{ icon: React.ReactNode; title: string; badge?: number; badgeColor?: string; onOpen: () => void }> = ({
+  icon,
+  title,
+  badge,
+  badgeColor,
+  onOpen,
+}) => (
+  <Glass className="pointer-events-auto self-start !rounded-full">
+    <button
+      type="button"
+      onClick={onOpen}
+      title="Развернуть панель"
+      className="flex cursor-pointer items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-medium text-foreground"
+    >
+      {icon}
+      {title}
+      {badge !== undefined && badge > 0 && (
+        <span className="font-num text-[12px]" style={{ color: badgeColor }}>
+          {badge}
+        </span>
+      )}
+    </button>
+  </Glass>
+);
+
+const LeftPanel: React.FC<{ onHide: () => void }> = ({ onHide }) => {
   const now = useNow(30_000);
   const all = useIncidentStore((s) => s.incidents);
   const { selectedIncident, selectIncident } = useIncidentStore();
@@ -256,7 +326,10 @@ const LeftPanel: React.FC = () => {
           <h2 className="eyebrow m-0 flex items-center gap-2 !text-foreground/80">
             <Radio className="size-3.5 text-primary" /> Обстановка
           </h2>
-          <span className="font-num text-[11px] text-muted-foreground">Липецк · 19 управ</span>
+          <span className="flex items-center gap-2">
+            <span className="font-num text-[11px] text-muted-foreground">Липецк · 19 управ</span>
+            <HideButton side="left" onClick={onHide} />
+          </span>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Kpi label="Открыто" value={summary.open} sub={`+${fresh24} за сутки`} />
@@ -321,7 +394,7 @@ const LeftPanel: React.FC = () => {
 
 /* ── Внимание: исполнители со срывами и повторные адреса ────────────────── */
 
-const AttentionPanel: React.FC = () => {
+const AttentionPanel: React.FC<{ onHide: () => void }> = ({ onHide }) => {
   const now = useNow(60_000);
   const all = useIncidentStore((s) => s.incidents);
   const selectIncident = useIncidentStore((s) => s.selectIncident);
@@ -332,9 +405,12 @@ const AttentionPanel: React.FC = () => {
 
   return (
     <Glass className="pointer-events-auto flex min-h-0 w-full flex-col overflow-y-auto p-4">
-      <h2 className="eyebrow m-0 flex items-center gap-2 !text-foreground/80">
-        <AlertTriangle className="size-3.5 text-danger" /> Требует внимания
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="eyebrow m-0 flex items-center gap-2 !text-foreground/80">
+          <AlertTriangle className="size-3.5 text-danger" /> Требует внимания
+        </h2>
+        <HideButton side="right" onClick={onHide} />
+      </div>
 
       <section className="mt-4">
         <h3 className="m-0 text-[13px] font-medium text-foreground">Сорваны сроки</h3>
@@ -439,6 +515,10 @@ export const DispatchLayout: React.FC = () => {
   const selectIncident = useIncidentStore((s) => s.selectIncident);
   const list = useFilteredIncidents();
   const counts = countByStatus(list);
+  const [hidden, togglePanel] = useHiddenPanels();
+  const all = useIncidentStore((s) => s.incidents);
+  const now = useNow(60_000);
+  const summary = summarizeIncidents(all, now);
 
   return (
     <div className="relative h-full overflow-y-auto lg:overflow-hidden">
@@ -479,12 +559,21 @@ export const DispatchLayout: React.FC = () => {
 
           {/* На телефоне открытое дело — полноэкранный слой: поднимаем весь блок над шапкой и кнопками карты */}
           <div className={`relative flex flex-col gap-3 p-3 lg:pointer-events-none ${selected ? 'z-50 lg:z-10' : 'z-10'} lg:absolute lg:inset-x-4 lg:bottom-14 lg:top-[84px] lg:flex-row lg:items-stretch lg:justify-between lg:p-0`}>
-            <div className="flex min-h-0 lg:w-[340px] xl:w-[372px]">
-              <LeftPanel />
+            <div className={`flex min-h-0 ${hidden.left ? '' : 'lg:w-[340px] xl:w-[372px]'}`}>
+              {hidden.left ? (
+                <CollapsedPanel
+                  icon={<Radio className="size-3.5 text-primary" />}
+                  title="Обстановка"
+                  badge={summary.open}
+                  onOpen={() => togglePanel('left')}
+                />
+              ) : (
+                <LeftPanel onHide={() => togglePanel('left')} />
+              )}
             </div>
 
             <div
-              className={`flex min-h-0 lg:w-[400px] xl:w-[452px] ${
+              className={`flex min-h-0 ${hidden.right && !selected ? 'lg:justify-end' : 'lg:w-[400px] xl:w-[452px]'} ${
                 selected ? 'max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:bg-background/70 max-lg:p-2 max-lg:backdrop-blur-sm' : ''
               }`}
             >
@@ -492,8 +581,17 @@ export const DispatchLayout: React.FC = () => {
                 <Glass className="pointer-events-auto flex min-h-0 w-full flex-col overflow-hidden max-lg:max-h-none">
                   <DispatchCard role={user.role} />
                 </Glass>
+              ) : hidden.right ? (
+                // Открытое дело показывается всегда: его выбрали явно
+                <CollapsedPanel
+                  icon={<AlertTriangle className="size-3.5 text-danger" />}
+                  title="Требует внимания"
+                  badge={summary.overdue + summary.knm}
+                  badgeColor="var(--danger)"
+                  onOpen={() => togglePanel('right')}
+                />
               ) : (
-                <AttentionPanel />
+                <AttentionPanel onHide={() => togglePanel('right')} />
               )}
             </div>
           </div>
