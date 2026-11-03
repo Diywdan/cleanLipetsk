@@ -28,6 +28,7 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
   const [deadline, setDeadline] = useState<DeadlineHours>(48);
   const [step, setStep] = useState<'dismiss' | 'return' | null>(null);
   const [comment, setComment] = useState('');
+  const [generatingKnmPackage, setGeneratingKnmPackage] = useState(false);
   const knmDocuments = getKnmPackageDocuments(incident);
   const knmPackageStatus = incident.knmPackage?.status?.trim();
   const knmReadinessErrors = incident.knmPackage?.readinessErrors?.filter((message) => typeof message === 'string' && message.trim());
@@ -220,6 +221,27 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
         <div className="flex flex-col gap-3">
           {note('bad', 'Срок устранения истёк. Материалы готовятся к передаче на контрольно-надзорное мероприятие.')}
           {role === 'INSPECTOR' && <DocumentServicePanel incident={incident} />}
+          {role === 'INSPECTOR' && incident.document_service?.control_case_id != null && !knmDocuments && (
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={async () => {
+                  setGeneratingKnmPackage(true);
+                  try {
+                    await s.issueKnmAct(id);
+                  } finally {
+                    setGeneratingKnmPackage(false);
+                  }
+                }}
+                disabled={generatingKnmPackage}
+                className={primary}
+              >
+                {generatingKnmPackage ? 'Проверяю готовность и формирую…' : 'Проверить готовность и сформировать пакет КНМ'}
+              </Button>
+              <p className="m-0 text-[12px] text-muted-foreground">
+                Сначала Document Service проверит обязательные поля и шаблоны. Если есть замечания, пакет не будет создан — причины появятся здесь.
+              </p>
+            </div>
+          )}
           {knmDocuments && (
             <div className="flex flex-col gap-2">
               <p className="m-0 text-[14px] text-success">Пакет №{knmDocuments.packageId} сформирован.</p>
@@ -253,7 +275,7 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
           )}
           {role === 'INSPECTOR' && (
             <p className="m-0 text-[12px] text-muted-foreground">
-              Заполнение замечаний и формирование документов выполняются через Document Service. Кнопка формирования пакета удалена: она только добавляла запись в историю CRM.
+              Сохранение основных данных формирует Задание и Решение. Полный пакет КНМ формируется после проверки готовности кнопкой выше; файлы можно открыть по ссылкам после успешного формирования.
             </p>
           )}
         </div>
