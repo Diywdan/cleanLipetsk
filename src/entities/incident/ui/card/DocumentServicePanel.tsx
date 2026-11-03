@@ -1,6 +1,7 @@
 import { useEffect, useState, type FC, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { documentPreparationMessage } from './documentPreparationMessage';
+import { isDocumentServiceIssueLinkable } from './documentServiceIssueLinks';
 import { useIncidentStore } from '../../model/incidentStore';
 import type { IDocumentServiceData, IDocumentServiceOptions, IIncident } from '../../types';
 
@@ -28,17 +29,6 @@ const REQUIRED_ISSUES = [
   'control_kind', 'control_form', 'control_body', 'controlled_organization', 'control_object',
   'approver', 'planned_start_at', 'planned_end_at', 'bases', 'decision.items',
 ] as const;
-
-const LINKABLE_ISSUES = new Set<string>([
-  ...REQUIRED_ISSUES,
-  'control_object.address',
-  'inspectors', 'requisites', 'requisites.inn', 'requisites.legal_address',
-  'assignment_date', 'actual_start_at', 'actual_end_at', 'actions',
-  'decision', 'decision.decision_date',
-]);
-
-const isLinkableIssue = (field: string) => LINKABLE_ISSUES.has(field)
-  || /^action\.\d+\.(started_at|ended_at|place)$/.test(field);
 
 export const DocumentServicePanel: FC<Props> = ({ incident }) => {
   const api = useIncidentStore((s) => s.api);
@@ -146,7 +136,7 @@ export const DocumentServicePanel: FC<Props> = ({ incident }) => {
         <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[12px] text-muted-foreground">
           {issues.map((issue) => (
             <li key={`${issue.field}-${issue.document ?? ''}`}>
-              {isLinkableIssue(issue.field) && incident.document_service?.url ? (
+              {isDocumentServiceIssueLinkable(issue.field) && incident.document_service?.url ? (
                 <a
                   href={`/api/v1/incidents/${encodeURIComponent(incident.id)}/document-service/launch?field=${encodeURIComponent(issue.field)}`}
                   target="_blank"
