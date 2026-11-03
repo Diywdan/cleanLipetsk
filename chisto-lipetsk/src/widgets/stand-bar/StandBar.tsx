@@ -15,6 +15,7 @@ const ROLES: { role: UserRole; title: string }[] = [
 const MODES: { id: ModeId; title: string }[] = [
   { id: 'dark', title: 'Тёмная' },
   { id: 'light', title: 'Светлая' },
+  { id: 'glass', title: 'Стекло' },
 ];
 
 const DATASETS: { id: DatasetId; title: string }[] = [

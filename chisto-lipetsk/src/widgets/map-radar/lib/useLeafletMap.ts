@@ -96,7 +96,8 @@ export function useLeafletMap(mapContainerRef: RefObject<HTMLDivElement | null>,
     // Тон подложки дотягивает CSS-фильтр .map-base canvas (styles/themes.css); маркеры — DOM, их фильтр не трогает
     const base = leafletLayer({
       url: MAP_TILES_URL,
-      flavor: mode === 'light' ? 'light' : 'dark',
+      // «Стекло» берёт светлую подложку: в ней цвет (парки, вода), фильтр темы делает её вечерней
+      flavor: mode === 'dark' ? 'dark' : 'light',
       lang: 'ru',
       maxDataZoom: 13,
       paintRules: [],

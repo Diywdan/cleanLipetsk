@@ -129,9 +129,96 @@
   --grid-line: rgba(10, 84, 140, 0.05);
   --sidebar: #F4F7FB;
 }
-/* На светлом фоне свечение цифр мутнит текст — убираем его */
-:root[data-mode="light"] [style*="text-shadow"] {
+/* ── «Стекло»: вариант на пробу (03.11.2026) ───────────────────────────────
+   Язык «стеклянных» дашбордов в духе visionOS: подложка — тёплая вечерняя
+   карта в цвете, панели — матовое стекло с сильным размытием и бликом по
+   кромке, крупные скругления, цифры тонким гротеском вместо моноширинного,
+   без неоновой сетки и свечения. Стекло затемнено настолько, чтобы белый
+   текст держал контраст над любым участком карты. */
+:root[data-mode="glass"] {
+  --background: #1B1720;
+  --foreground: #FFFFFF;
+  --card: rgba(24, 21, 30, 0.50);
+  --card-foreground: #FFFFFF;
+  --popover: #26212D;
+  --popover-foreground: #FFFFFF;
+  --primary: #8EC1FF;
+  --primary-foreground: #0B1424;
+  --secondary: rgba(255, 255, 255, 0.14);
+  --secondary-foreground: #FFFFFF;
+  --muted: rgba(255, 255, 255, 0.07);
+  --muted-foreground: rgba(255, 255, 255, 0.72);
+  --accent: rgba(255, 255, 255, 0.10);
+  --accent-foreground: #FFFFFF;
+  --destructive: #FF7A9A;
+  --border: rgba(255, 255, 255, 0.16);
+  --input: rgba(255, 255, 255, 0.22);
+  --ring: #8EC1FF;
+  --radius: 1rem;
+
+  --ink: #0B0910;
+  --danger: #FF8FAB;
+  --success: #6EE0A8;
+  --warning: #FFC27A;
+
+  --st-new: #7CC0FF;   --st-new-bg: rgba(124, 192, 255, 0.20);  --st-new-fg: #C4E2FF;
+  --st-work: #FFB866;  --st-work-bg: rgba(255, 184, 102, 0.20); --st-work-fg: #FFDDB0;
+  --st-check: #C0A6FF; --st-check-bg: rgba(192, 166, 255, 0.22); --st-check-fg: #E1D4FF;
+  --st-knm: #FF7A9A;   --st-knm-bg: rgba(255, 122, 154, 0.22);  --st-knm-fg: #FFC6D4;
+  --st-done: #6EE0A8;  --st-done-bg: rgba(110, 224, 168, 0.20); --st-done-fg: #C2F2DA;
+
+  --font-num: 'Golos Text Variable', 'Segoe UI', Arial, sans-serif;
+
+  --chart-1: #8EC1FF;
+  --chart-2: #FF7A9A;
+  --chart-grid: rgba(255, 255, 255, 0.10);
+  --chart-axis: rgba(255, 255, 255, 0.62);
+  --zone-1: #FFD7A8;
+  --zone-2: #C0A6FF;
+  /* Светлая подложка Protomaps → тёплый вечер: янтарь, приглушённая яркость */
+  --map-filter: sepia(0.22) saturate(1.6) hue-rotate(-10deg) brightness(0.8) contrast(1.08);
+  --panel-shadow: 0 30px 60px -24px rgba(10, 6, 14, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+
+  --inset: rgba(255, 255, 255, 0.08);
+  --hover: rgba(255, 255, 255, 0.08);
+  --chip-on: rgba(255, 255, 255, 0.22);
+  --chip-ring: rgba(255, 255, 255, 0.35);
+  --stage-glow: radial-gradient(1400px 700px at 75% -15%, rgba(255, 168, 96, 0.30), transparent 60%),
+    radial-gradient(1000px 600px at 0% 110%, rgba(150, 110, 220, 0.24), transparent 60%),
+    linear-gradient(180deg, #2A2030 0%, #1B1720 100%);
+  /* Вместо холодной виньетки — тёплый закатный свет сверху и тень снизу */
+  --vignette: inset 0 180px 180px -60px rgba(255, 140, 70, 0.30), inset 0 -160px 160px -60px rgba(12, 8, 16, 0.55);
+  --grid-line: transparent;
+  --sidebar: #221D29;
+}
+
+/* На светлом фоне и на стекле свечение цифр мутнит текст — убираем его */
+:root[data-mode="light"] [style*="text-shadow"],
+:root[data-mode="glass"] [style*="text-shadow"] {
   text-shadow: none !important;
+}
+
+/* Стекло: размытие сильнее, панели круглее, крупные цифры — тонким начертанием */
+:root[data-mode="glass"] .glass {
+  backdrop-filter: blur(32px) saturate(1.7) brightness(0.95);
+  -webkit-backdrop-filter: blur(32px) saturate(1.7) brightness(0.95);
+}
+:root[data-mode="glass"] .glass.rounded-2xl {
+  border-radius: 1.75rem;
+}
+:root[data-mode="glass"] .glass .rounded-xl {
+  border-radius: 1.125rem;
+}
+:root[data-mode="glass"] .font-num.text-\[30px\] {
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+:root[data-mode="glass"] .eyebrow {
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 /* ── Общие вещи ─────────────────────────────────────────────────────────── */
