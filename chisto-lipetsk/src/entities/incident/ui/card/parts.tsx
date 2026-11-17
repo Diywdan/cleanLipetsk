@@ -80,7 +80,7 @@ export const PhotoEvidence: React.FC<{
         {picture}
         <HudCorners />
         <span className="font-num pointer-events-none absolute bottom-2.5 left-3 z-30 rounded bg-black/55 px-1.5 py-0.5 text-[11px] text-white/85">
-          {SOURCE_TITLE[source].toUpperCase()} · {formatDateTime(timeline.createdAt)}
+          {(SOURCE_TITLE[source] ?? source).toUpperCase()} · {formatDateTime(timeline.createdAt)}
         </span>
       </div>
     </figure>

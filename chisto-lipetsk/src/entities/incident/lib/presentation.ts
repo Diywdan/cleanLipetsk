@@ -52,6 +52,7 @@ export const SOURCE_TITLE: Record<IncidentSource, string> = {
   MAKS_CHAT: 'Чат ДРТ в MAX',
   DRT_WEBSITE: 'Сайт ДРТ',
   DIRECT_ORDER: 'Поручение руководства',
+  POS: 'ПОС',
 };
 
 export function formatDeadline(hours: number): string {
