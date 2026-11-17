@@ -2,6 +2,7 @@ import React, { useRef, } from 'react';
 import 'leaflet/dist/leaflet.css';
 import { useLeafletMap } from '../lib/useLeafletMap';
 import { useIncidentMarkers } from '../lib/useIncidentMarkers';
+import { useZoneLayer } from '../lib/useZoneLayer';
 import { STATUS_META, STATUS_ORDER } from '@/entities/incident/lib/presentation';
 import { useStandStore } from '@/shared/theme/standStore';
 
@@ -12,11 +13,12 @@ interface TProps {
   className?: string;
 }
 
-// Сама карта с маркерами; при смене темы меняет подложку и цвета зон УК.
+// Сама карта: зоны управ из CRM и маркеры; при смене темы меняет подложку и цвета зон.
 const MapCanvas: React.FC<{ className?: string }> = ({ className = '' }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mode = useStandStore((s) => s.mode);
   const { mapReady, tilesMissing, mapRef } = useLeafletMap(mapContainerRef, mode);
+  useZoneLayer(mapReady, mapRef, mode);
   useIncidentMarkers(mapReady, mapRef);
 
   return (

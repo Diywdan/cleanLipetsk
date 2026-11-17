@@ -10,7 +10,7 @@ export function readCssVar(name: string): string {
 const NAMES = [
   'background', 'foreground', 'card', 'popover', 'accent', 'muted', 'muted-foreground', 'border', 'primary',
   'st-new', 'st-work', 'st-check', 'st-knm', 'st-done',
-  'chart-grid', 'chart-axis', 'chart-1', 'chart-2', 'zone-1', 'zone-2',
+  'chart-grid', 'chart-axis', 'chart-1', 'chart-2', 'zone-1', 'zone-2', 'zone-3', 'zone-4',
 ] as const;
 
 export type ThemeColors = Record<(typeof NAMES)[number], string>;
