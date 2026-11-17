@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import L from 'leaflet';
 import { leafletLayer } from 'protomaps-leaflet';
-import { LIPETSK_POLYGONS } from './lipetskPolygons';
-import { MAP_BOUNDS, MAP_CENTER, MAP_TILES_URL, toLatLng } from './mapUtils';
-import { readThemeColors } from '@/shared/theme/themeColors';
+import { MAP_BOUNDS, MAP_CENTER, MAP_TILES_URL } from './mapUtils';
 import type { ModeId } from '@/shared/theme/standStore';
 
 // protomaps-leaflet строит свой слой от глобального L
@@ -25,7 +23,6 @@ export function useLeafletMap(mapContainerRef: RefObject<HTMLDivElement | null>,
   const [mapReady, setMapReady] = useState(false);
   const [tilesMissing, setTilesMissing] = useState<string | null>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const zonesRef = useRef<L.Polygon[]>([]);
 
   useEffect(() => {
     const container = mapContainerRef.current;
@@ -47,16 +44,6 @@ export function useLeafletMap(mapContainerRef: RefObject<HTMLDivElement | null>,
 
     map.attributionControl.setPrefix(
       '<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a> · <a href="https://protomaps.com" target="_blank" rel="noopener">Protomaps</a>',
-    );
-
-    // Зоны ответственности УК; цвета ставит тема (эффект ниже)
-    zonesRef.current = LIPETSK_POLYGONS.map((poly) =>
-      L.polygon(poly.coordinates.map((ring) => ring.map((point) => toLatLng(point))), {
-        color: poly.borderColor,
-        weight: 1.5,
-        fillOpacity: 0.14,
-        interactive: false,
-      }).addTo(map),
     );
 
     // Раскладка меняет размер карты (карточка дела, мобильный вид) — Leaflet об этом сам не узнаёт
@@ -83,11 +70,10 @@ export function useLeafletMap(mapContainerRef: RefObject<HTMLDivElement | null>,
       setMapReady(false);
       map.remove();
       mapRef.current = null;
-      zonesRef.current = [];
     };
   }, [mapContainerRef]);
 
-  // Тема: подложка своего тона (инверсия светлой красит парки в бурый) и цвета зон.
+  // Тема: подложка своего тона (инверсия светлой красит парки в бурый).
   // Карту не пересоздаём — вид и масштаб остаются, где их оставил инспектор.
   useEffect(() => {
     const map = mapRef.current;
@@ -104,13 +90,6 @@ export function useLeafletMap(mapContainerRef: RefObject<HTMLDivElement | null>,
     });
     base.addTo(map);
     base.bringToBack();
-
-    const theme = readThemeColors();
-    const zoneColors = [theme['zone-1'], theme['zone-2']];
-    zonesRef.current.forEach((zone, index) => {
-      const color = zoneColors[index % zoneColors.length] || LIPETSK_POLYGONS[index].borderColor;
-      zone.setStyle({ color, fillColor: color });
-    });
 
     return () => {
       base.remove();
