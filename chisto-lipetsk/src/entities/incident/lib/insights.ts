@@ -62,7 +62,7 @@ export function bySource(incidents: IIncident[]) {
   const map = new Map<IncidentSource, number>();
   for (const i of incidents) map.set(i.source, (map.get(i.source) ?? 0) + 1);
   return [...map.entries()]
-    .map(([source, count]) => ({ source, title: SOURCE_TITLE[source], count }))
+    .map(([source, count]) => ({ source, title: SOURCE_TITLE[source] ?? source, count }))
     .sort((a, b) => b.count - a.count);
 }
 
