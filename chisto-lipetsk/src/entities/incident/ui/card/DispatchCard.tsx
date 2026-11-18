@@ -6,7 +6,7 @@ import { StatusTag } from '../StatusTag';
 import { useCardModel, sourceLine } from './cardModel';
 import { CardActions } from './CardActions';
 import { ReportMeta } from './PhotoReportForm';
-import { AiToggle, HistoryList, KpValue, PhotoEvidence, ResponsiblesList, SlaMeter } from './parts';
+import { AiToggle, HistoryList, KpValue, PhotoEvidence, PosAppeal, ResponsiblesList, SlaMeter } from './parts';
 
 // «Диспетчерская»: карточка — стеклянная панель над картой.
 // Вверху светится полоса цвета стадии, цифры моноширинные, фото в видоискателе.
@@ -78,6 +78,12 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
                 Не сходится со справочниками: {inc.reviewReason}
               </p>
             )}
+          </Section>
+        )}
+
+        {inc.pos && (
+          <Section title="Обращение в ПОС">
+            <PosAppeal incident={inc} />
           </Section>
         )}
 

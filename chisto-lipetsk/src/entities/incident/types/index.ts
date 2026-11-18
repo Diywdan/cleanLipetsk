@@ -134,6 +134,19 @@ export interface IKnmPackage {
 }
 
 // 8. Единый монолитный интерфейс инцидента (Главная сущность системы)
+// Обращение в ПОС («Платформа обратной связи»): статус там ведут свои ответственные, в CRM — инспектор
+export interface IPosAppeal {
+  status?: string;
+  substatus?: string;
+  reviewDeadline?: string;  // срок рассмотрения в ПОС
+  lastReplyAt?: string;
+  lastReply?: string;       // кто ответил последним
+  responsible?: string;
+  managementCompany?: string;
+  category?: string;
+  fz59?: boolean;
+}
+
 export interface IIncident {
   id: string;
   status: IncidentStatus;
@@ -154,6 +167,10 @@ export interface IIncident {
   violationType?: { id: string; name: string | null };
   comment?: string | null;
   reviewReason?: string | null; // событие не сошлось со справочниками — инспектор проверяет исполнителя
+  // Обращение из ПОС: номер и как оно идёт в самом ПОС (статус, срок, ответ)
+  posAppealNumber?: string;
+  posExternalNumber?: string | null;
+  pos?: IPosAppeal;
 
   knmPackage?: IKnmPackage | null;
   primaryPackage?: IKnmPackage | null;
