@@ -19,15 +19,21 @@ export const MAP_BOUNDS: LatLngBoundsExpression = [
 // В данных координаты [долгота, широта] (как в GeoJSON), Leaflet ждёт [широта, долгота]
 export const toLatLng = ([lng, lat]: readonly [number, number] | readonly number[]): LatLngTuple => [lat, lng];
 
+// Форма метки — источник, цвет — статус. Обращения ПОС — ромб, остальные — круг.
+export type MarkerShape = "circle" | "diamond";
+
 // Маркер обращения: светящаяся точка, у новых и КНМ — пульс.
 export function createMarkerElement(
   status: IncidentStatus,
   isSelected: boolean,
   onClick: () => void,
+  shape: MarkerShape = "circle",
+  hint = "",
 ): HTMLDivElement {
   const el = document.createElement("div");
   const color = STATUS_META[status]?.dot ?? "#5C6B7A";
-  const base = 14;
+  const diamond = shape === "diamond";
+  const base = diamond ? 12 : 14; // ромб повёрнут — по диагонали он крупнее круга того же размера
   const size = isSelected ? base + 8 : base;
 
   const ring = isSelected
@@ -37,11 +43,11 @@ export function createMarkerElement(
   el.style.cssText = [
     `width:${size}px`,
     `height:${size}px`,
-    "border-radius:9999px",
+    diamond ? "border-radius:2px" : "border-radius:9999px",
     `background:${color}`,
     `color:${color}`,
     ring,
-    "transform:translate(-50%,-50%)",
+    diamond ? "transform:translate(-50%,-50%) rotate(45deg)" : "transform:translate(-50%,-50%)",
     "cursor:pointer",
     `position:relative;z-index:${isSelected ? 50 : 10}`,
     "transition:width .15s,height .15s,box-shadow .15s",
@@ -49,7 +55,7 @@ export function createMarkerElement(
   if (status === "NEW" || status === "KNM_ESCALATION") {
     el.classList.add("marker-pulse");
   }
-  el.title = STATUS_META[status]?.label ?? "";
+  el.title = [STATUS_META[status]?.label ?? "", hint].filter(Boolean).join(" · ");
 
   el.onclick = (e) => {
     e.stopPropagation();

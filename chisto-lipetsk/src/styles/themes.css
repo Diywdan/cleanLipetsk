@@ -230,7 +230,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 9999px;
+  border-radius: inherit; /* пульс повторяет форму метки: круг или ромб ПОС */
   background: currentColor;
   animation: marker-pulse 2.2s ease-out infinite;
 }

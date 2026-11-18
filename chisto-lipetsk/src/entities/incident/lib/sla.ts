@@ -7,6 +7,7 @@ export type DeadlineHours = 24 | 48 | 72 | 720;
 const FIXED_BY_SOURCE: Partial<Record<IncidentSource, DeadlineHours>> = {
   DIRECT_ORDER: 24,     // личное указание руководства — сутки
   GOVERNOR_PORTAL: 72,  // портал губернатора — 3 дня
+  POS: 72,              // платформа обратной связи (Госуслуги) — 3 дня
   DELO_WEB: 720,        // Дело-web — до 30 дней
 };
 

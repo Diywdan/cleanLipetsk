@@ -3,8 +3,8 @@ import { Search, X, Radio, AlertTriangle, Repeat2, Hourglass, Download, PanelLef
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
 import { useFilterStore, useFilteredIncidents } from '@/entities/incident/model/filterStore';
 import { useAuthStore } from '@/entities/user/model/authStore';
-import type { IIncident, IncidentStatus } from '@/entities/incident/types';
-import { STATUS_META, STATUS_ORDER, typoQuotes } from '@/entities/incident/lib/presentation';
+import type { IIncident, IncidentSource, IncidentStatus } from '@/entities/incident/types';
+import { SOURCE_TITLE, STATUS_META, STATUS_ORDER, markerShape, typoQuotes } from '@/entities/incident/lib/presentation';
 import { getPrimaryOrganizationName, getRecidivismCount } from '@/entities/incident/lib/responsibles';
 import { summarizeIncidents } from '@/entities/incident/lib/summary';
 import { byDay, countByStatus, createdWithin, dueSoon, failingExecutors, repeatAddresses } from '@/entities/incident/lib/insights';
@@ -166,6 +166,16 @@ const Spark: React.FC<{ data: { label: string; total: number; closed: number }[]
 
 /* ── Лента обращений ────────────────────────────────────────────────────── */
 
+// Значок формы метки на карте: ромб — ПОС, круг — остальные (цвет метки — статус)
+const SourceMark: React.FC<{ source: IncidentSource }> = ({ source }) => (
+  <span
+    aria-hidden
+    className={`inline-block size-2 border border-current opacity-80 ${
+      markerShape(source) === 'diamond' ? 'rotate-45 rounded-[1px]' : 'rounded-full'
+    }`}
+  />
+);
+
 const FeedRow: React.FC<{ incident: IIncident; now: number; selected: boolean; onSelect: () => void }> = ({
   incident,
   now,
@@ -195,6 +205,8 @@ const FeedRow: React.FC<{ incident: IIncident; now: number; selected: boolean; o
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13.5px] font-medium text-foreground">{incident.location.address}</span>
           <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
+            <span className="text-foreground/70">{SOURCE_TITLE[incident.source] ?? incident.source}</span>
+            {' · '}
             {incident.violationType?.name && `${incident.violationType.name} · `}
             {typoQuotes(getPrimaryOrganizationName(incident))} · {timeAgo(incident.timeline.createdAt, now)}
           </span>
@@ -290,9 +302,16 @@ const LeftPanel: React.FC<{ onHide: () => void }> = ({ onHide }) => {
   const now = useNow(30_000);
   const all = useIncidentStore((s) => s.incidents);
   const { selectedIncident, selectIncident } = useIncidentStore();
-  const { status, query, set } = useFilterStore();
+  const { status, source, query, set } = useFilterStore();
   const forCounts = useFilteredIncidents({ ignoreStatus: true });
+  const forSources = useFilteredIncidents({ ignoreSource: true });
   const list = useFilteredIncidents();
+  // Источники — только те, что есть в данных (ПОС, Домовой, обход…), по убыванию числа обращений
+  const sources = useMemo(() => {
+    const n = new Map<IncidentSource, number>();
+    forSources.forEach((i) => n.set(i.source, (n.get(i.source) ?? 0) + 1));
+    return [...n.entries()].sort((a, b) => b[1] - a[1]);
+  }, [forSources]);
 
   const summary = summarizeIncidents(all, now);
   const counts = countByStatus(forCounts);
@@ -380,6 +399,25 @@ const LeftPanel: React.FC<{ onHide: () => void }> = ({ onHide }) => {
           {chip('all', 'Все', forCounts.length)}
           {STATUS_ORDER.map((s) => chip(s, STATUS_META[s].short, counts[s]))}
         </div>
+        {(sources.length > 1 || source !== 'all') && (
+          <div className="-mx-1 flex flex-wrap items-center gap-1" role="group" aria-label="Источник">
+            {[['all', forSources.length] as const, ...sources].map(([id, n]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => set({ source: id })}
+                aria-pressed={source === id}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] transition-colors ${
+                  source === id ? 'bg-[var(--chip-on)] text-foreground ring-1 ring-[var(--chip-ring)]' : 'text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground'
+                }`}
+              >
+                {id !== 'all' && <SourceMark source={id} />}
+                {id === 'all' ? 'Все источники' : SOURCE_TITLE[id] ?? id}
+                <span className="font-num text-[11px] opacity-80">{n}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <ul className="m-0 min-h-0 flex-1 list-none space-y-0.5 overflow-y-auto p-2 pt-1 max-lg:max-h-[420px]">
@@ -607,6 +645,12 @@ export const DispatchLayout: React.FC = () => {
                     <span className="font-num text-foreground">{counts[s]}</span>
                   </li>
                 ))}
+                <li className="flex items-center gap-1.5 border-l border-border pl-4">
+                  <SourceMark source="HOUSE_CHATS" /> Домовой и др.
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <SourceMark source="POS" /> ПОС
+                </li>
               </ul>
             </Glass>
           </div>
