@@ -55,6 +55,11 @@ export const SOURCE_TITLE: Record<IncidentSource, string> = {
   POS: 'ПОС',
 };
 
+// Форма метки на карте по источнику: ПОС — ромб, чтобы отличался от Домового и остальных (круг)
+export function markerShape(source: IncidentSource): 'circle' | 'diamond' {
+  return source === 'POS' ? 'diamond' : 'circle';
+}
+
 export function formatDeadline(hours: number): string {
   if (hours === 24) return '1 сутки';
   if (hours % 24 === 0) return `${hours / 24} суток`;

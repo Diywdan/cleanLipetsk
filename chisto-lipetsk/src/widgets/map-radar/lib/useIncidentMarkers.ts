@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { useIncidentStore } from '@/entities/incident/model/incidentStore';
 import { useFilteredIncidents } from '@/entities/incident/model/filterStore';
 import { useStandStore } from '@/shared/theme/standStore';
+import { SOURCE_TITLE, markerShape } from '@/entities/incident/lib/presentation';
 import { createMarkerElement, toLatLng } from './mapUtils';
 
 export function useIncidentMarkers(mapReady: boolean, mapRef: React.RefObject<L.Map | null>) {
@@ -33,6 +34,8 @@ export function useIncidentMarkers(mapReady: boolean, mapRef: React.RefObject<L.
         incident.status,
         isSelected,
         () => selectIncident(incident.id),
+        markerShape(incident.source),
+        SOURCE_TITLE[incident.source] ?? incident.source,
       );
 
       // Точка рисует себя сама и центрируется своим transform — иконке нужен нулевой размер

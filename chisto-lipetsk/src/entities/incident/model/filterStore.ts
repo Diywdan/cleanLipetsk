@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
-import type { IIncident, IncidentStatus } from '../types';
+import type { IIncident, IncidentSource, IncidentStatus } from '../types';
 import { useIncidentStore } from './incidentStore';
 
 // Фильтры реестра вынесены в стор: их делят таблица, лента «Диспетчерской»
@@ -12,6 +12,7 @@ export interface IncidentFilters {
   org: string;                      // название любой ответственной организации
   uprava: string;                   // 'all' или номер управы
   status: 'all' | IncidentStatus;
+  source: 'all' | IncidentSource;   // откуда пришло: ПОС, Домовой, обход…
   period: PeriodFilter;
 }
 
@@ -20,7 +21,7 @@ interface FilterStore extends IncidentFilters {
   reset: () => void;
 }
 
-const EMPTY: IncidentFilters = { query: '', org: '', uprava: 'all', status: 'all', period: 'all' };
+const EMPTY: IncidentFilters = { query: '', org: '', uprava: 'all', status: 'all', source: 'all', period: 'all' };
 
 export const useFilterStore = create<FilterStore>((set) => ({
   ...EMPTY,
@@ -33,7 +34,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function filterIncidents(
   incidents: IIncident[],
   f: IncidentFilters,
-  options: { ignoreStatus?: boolean; now?: number } = {},
+  options: { ignoreStatus?: boolean; ignoreSource?: boolean; now?: number } = {},
 ): IIncident[] {
   const now = options.now ?? Date.now();
   const query = f.query.trim().toLowerCase();
@@ -46,6 +47,7 @@ export function filterIncidents(
     }
     if (f.uprava !== 'all' && incident.location.upravaId !== Number(f.uprava)) return false;
     if (!options.ignoreStatus && f.status !== 'all' && incident.status !== f.status) return false;
+    if (!options.ignoreSource && f.source !== 'all' && incident.source !== f.source) return false;
 
     if (f.period !== 'all') {
       const created = new Date(incident.timeline.createdAt).getTime();
@@ -60,22 +62,26 @@ export function filterIncidents(
 }
 
 export function hasActiveFilters(f: IncidentFilters): boolean {
-  return Boolean(f.query || f.org || f.uprava !== 'all' || f.status !== 'all' || f.period !== 'all');
+  return Boolean(
+    f.query || f.org || f.uprava !== 'all' || f.status !== 'all' || f.source !== 'all' || f.period !== 'all',
+  );
 }
 
 // Отфильтрованный список. ignoreStatus — для счётчиков по статусам: они
 // показывают, сколько будет в каждой вкладке при остальных фильтрах.
-export function useFilteredIncidents(options: { ignoreStatus?: boolean } = {}): IIncident[] {
+export function useFilteredIncidents(options: { ignoreStatus?: boolean; ignoreSource?: boolean } = {}): IIncident[] {
   const incidents = useIncidentStore((s) => s.incidents);
   const query = useFilterStore((s) => s.query);
   const org = useFilterStore((s) => s.org);
   const uprava = useFilterStore((s) => s.uprava);
   const status = useFilterStore((s) => s.status);
+  const source = useFilterStore((s) => s.source);
   const period = useFilterStore((s) => s.period);
   const ignoreStatus = options.ignoreStatus ?? false;
+  const ignoreSource = options.ignoreSource ?? false;
   // Мемо: карта перерисовывает маркеры только при реальной смене списка
   return useMemo(
-    () => filterIncidents(incidents, { query, org, uprava, status, period }, { ignoreStatus }),
-    [incidents, query, org, uprava, status, period, ignoreStatus],
+    () => filterIncidents(incidents, { query, org, uprava, status, source, period }, { ignoreStatus, ignoreSource }),
+    [incidents, query, org, uprava, status, source, period, ignoreStatus, ignoreSource],
   );
 }
