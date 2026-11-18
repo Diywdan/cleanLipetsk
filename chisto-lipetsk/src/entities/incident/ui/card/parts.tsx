@@ -215,3 +215,48 @@ export const SlaMeter: React.FC<{
     </div>
   );
 };
+
+/* ── Обращение в ПОС ────────────────────────────────────────────────────── */
+
+const day = (iso: string) => new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+// Как обращение идёт в самом ПОС. Статус дела CRM ведёт инспектор: «Завершено» в ПОС его не закрывает,
+// поэтому такое расхождение подсвечиваем.
+export const PosAppeal: React.FC<{ incident: IIncident; now?: number }> = ({ incident, now = Date.now() }) => {
+  const pos = incident.pos;
+  if (!pos) return null;
+  const status = [pos.status, pos.substatus].filter(Boolean).join(', ') || 'не указан';
+  const finished = /заверш|закрыт|дан ответ|отклон/i.test(status);
+  const overdue = !finished && pos.reviewDeadline ? new Date(pos.reviewDeadline).getTime() < now : false;
+  const open = incident.status !== 'CLOSED';
+  const rows: [string, React.ReactNode][] = [
+    ['Номер', <span className="font-num">{incident.posAppealNumber}{incident.posExternalNumber ? ` · ${incident.posExternalNumber}` : ''}</span>],
+    ['Статус в ПОС', status],
+    ['Срок рассмотрения', pos.reviewDeadline
+      ? <span className={`font-num ${overdue ? 'text-danger' : ''}`}>{day(pos.reviewDeadline)}{overdue ? ' · просрочен' : ''}</span>
+      : '—'],
+    ['Последний ответ', pos.lastReplyAt
+      ? <span><span className="font-num">{day(pos.lastReplyAt)}</span>{pos.lastReply ? ` · ${typoQuotes(pos.lastReply)}` : ''}</span>
+      : 'ответа ещё нет'],
+    ['Ответственный в ПОС', pos.responsible ? typoQuotes(pos.responsible) : '—'],
+    ['УК в ПОС', pos.managementCompany ? typoQuotes(pos.managementCompany) : 'не указана'],
+  ];
+  return (
+    <div className="rounded-lg border border-border bg-[var(--inset)] px-3 py-2.5">
+      {pos.category && <div className="text-[13px] text-muted-foreground">{pos.category}{pos.fz59 ? ' · 59-ФЗ' : ''}</div>}
+      <dl className="m-0 mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
+        {rows.map(([label, value]) => (
+          <React.Fragment key={label}>
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd className="m-0 text-foreground">{value}</dd>
+          </React.Fragment>
+        ))}
+      </dl>
+      {finished && open && (
+        <p className="m-0 mt-2 rounded-md bg-warning/10 px-2.5 py-1.5 text-[12.5px] text-warning">
+          В ПОС обращение уже закрыто, а дело ещё открыто — проверьте площадку и закройте дело.
+        </p>
+      )}
+    </div>
+  );
+};
