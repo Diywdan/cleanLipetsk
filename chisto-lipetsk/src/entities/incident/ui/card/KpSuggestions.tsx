@@ -90,7 +90,7 @@ export const KpSuggestions: React.FC<{ id: string }> = ({ id }) => {
       </label>
       {work && <p className="mb-3 rounded border border-border p-2 text-xs text-muted-foreground">{WORK_HINT[work]}</p>}
       {houseUk && <div className="mb-3 rounded border border-border p-2 text-xs" aria-label="УК точного дома по Домовому">
-        <strong>{houseUk.organization ? `УК точного дома: ${houseUk.organization.name}` : 'УК дома по данным Домового'}</strong>
+        <strong>{(houseUk.organization?.name || houseUk.source_organization?.name) ? `УК точного дома: ${houseUk.organization?.name || houseUk.source_organization?.name}` : 'УК дома по данным Домового'}</strong>
         <p className="my-1 text-muted-foreground">{houseUk.reason}</p>
         <p className="my-1 text-muted-foreground">{houseUk.routing_note}</p>
         {houseUk.status === 'matched' && houseUk.eligible && <p className="my-1 text-warning">Предложение требует подтверждения инспектора; владельцем КП УК автоматически не становится.</p>}
