@@ -24,7 +24,7 @@ interface IncidentStore {
   clearError: () => void;
 
   // Маршрут дела (правила — lib/workflow.ts)
-  confirmIncident: (id: string, deadlineHours: DeadlineHours, reassign?: { executorId?: string; typeViolationId?: string }) => Promise<void>;
+  confirmIncident: (id: string, deadlineHours: DeadlineHours, reassign?: { executorId?: string; typeViolationId?: string; rememberResponsible?: boolean }) => Promise<void>;
   dismissIncident: (id: string, reason?: string) => Promise<void>;
   submitPhotoReport: (id: string, report: IPhotoReport) => Promise<void>;
   approveIncident: (id: string) => Promise<void>;

@@ -120,7 +120,7 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
 
       <footer className="shrink-0 border-t border-border bg-[var(--inset)] px-5 py-4">
         {/* key: при переключении дела сбрасываем шаги «почему ложное» / «что доделать» */}
-        <CardActions key={inc.id} incident={inc} role={role} />
+        <CardActions key={`${inc.id}:${inc.violationType?.id ?? ""}`} incident={inc} role={role} />
       </footer>
     </article>
   );

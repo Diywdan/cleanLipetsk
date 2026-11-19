@@ -238,7 +238,8 @@ export const PosAppeal: React.FC<{ incident: IIncident; now?: number }> = ({ inc
     ['Последний ответ', pos.lastReplyAt
       ? <span><span className="font-num">{day(pos.lastReplyAt)}</span>{pos.lastReply ? ` · ${typoQuotes(pos.lastReply)}` : ''}</span>
       : 'ответа ещё нет'],
-    ['Ответственный в ПОС', pos.responsible ? typoQuotes(pos.responsible) : '—'],
+    ['Основной ответственный в ПОС', pos.mainResponsible ? typoQuotes(pos.mainResponsible) : '—'],
+    ['Исполнительный ответственный в ПОС', (pos.executiveResponsible || pos.responsible) ? typoQuotes(pos.executiveResponsible || pos.responsible || '') : '—'],
     ['УК в ПОС', pos.managementCompany ? typoQuotes(pos.managementCompany) : 'не указана'],
   ];
   return (

@@ -1,6 +1,7 @@
 import type { IIncident, IResponsible, OrganizationKind, ResponsibleRole } from '../types';
 
 export const RESPONSIBLE_ROLE_TITLE: Record<ResponsibleRole, string> = {
+  container_maintenance: 'Ремонт контейнера',
   site_maintenance: 'Содержание площадки',
   waste_removal: 'Вывоз',
   new_site_decision: 'Создание и перенос КП',

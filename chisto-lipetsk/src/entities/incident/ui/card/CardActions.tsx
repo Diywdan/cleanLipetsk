@@ -28,6 +28,7 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
   const now = useNow(30_000);
   const s = useIncidentStore();
   const [deadline, setDeadline] = useState<DeadlineHours>(48);
+  const [remember, setRemember] = useState(false);
   const [step, setStep] = useState<'dismiss' | 'return' | null>(null);
   const [comment, setComment] = useState('');
   const [generatingKnmPackage, setGeneratingKnmPackage] = useState(false);
@@ -131,11 +132,17 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
               }
             />
           )}
+          {source === 'POS' && incident.kp?.method === 'manual' && (
+            <label className="flex items-start gap-2 rounded border border-border p-3 text-xs">
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              <span>Запомнить подтверждённого исполнителя для этой КП и выбранного вида работы. При следующих обращениях CRM предложит его снова.</span>
+            </label>
+          )}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr]">
             <Button variant="outline" onClick={() => setStep('dismiss')} className={`${secondary} text-danger`}>
               Ложное срабатывание
             </Button>
-            <Button onClick={() => s.confirmIncident(id, deadline, reassign.payload)} disabled={!reassign.valid} className={primary}>
+            <Button onClick={() => s.confirmIncident(id, deadline, { ...reassign.payload, rememberResponsible: remember })} disabled={!reassign.valid} className={primary}>
               Подтвердить и направить исполнителю
             </Button>
           </div>
