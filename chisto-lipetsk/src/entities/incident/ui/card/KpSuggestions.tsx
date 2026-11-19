@@ -8,6 +8,16 @@ type Candidate = {
   reason: string; requires_confirmation: boolean;
 };
 
+type HouseUk = { status: string; reason: string; routing_note: string; eligible: boolean;
+  organization?: { id: string; name: string }; source_organization?: { name?: string } };
+type WorkOptions = { selected: string | null; items: { id: string; name: string }[]; house_uk?: HouseUk };
+const WORK_HINT: Record<string, string> = {
+  waste_removal: 'Вывоз: нужен оператор вывоза для этой КП. УК дома по адресу не подставляется.',
+  container_repair: 'Контейнер: нужен ответственный за ремонт или замену. Оператор вывоза и владелец контейнера могут различаться — проверьте сведения.',
+  site_maintenance: 'Площадка: нужен её владелец или содержатель. УК точного дома — предварительное предложение, принадлежность КП нужно проверить.',
+  territory: 'Вокруг площадки: двор дома — УК; муниципальная земля — ответственный за её уборку. Оператор вывоза автоматически не назначается.',
+};
+
 export const KpSuggestions: React.FC<{ id: string }> = ({ id }) => {
   const [street, setStreet] = useState('');
   const [house, setHouse] = useState('');
@@ -16,6 +26,7 @@ export const KpSuggestions: React.FC<{ id: string }> = ({ id }) => {
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
   const [work, setWork] = useState('');
+  const [houseUk, setHouseUk] = useState<HouseUk | null>(null);
   const [workOptions, setWorkOptions] = useState<{ id: string; name: string }[]>([]);
   const [selected, setSelected] = useState('');
   useEffect(() => {
@@ -24,9 +35,9 @@ export const KpSuggestions: React.FC<{ id: string }> = ({ id }) => {
     setBusy(true);
     Promise.all([
       http<Candidate[]>(API_URL, `/cases/${encodeURIComponent(id)}/kp-candidates`),
-      http<{ selected: string | null; items: { id: string; name: string }[] }>(API_URL, `/cases/${encodeURIComponent(id)}/work-options`),
+      http<WorkOptions>(API_URL, `/cases/${encodeURIComponent(id)}/work-options`),
     ]).then(([items, options]) => { if (active) {
-      setRows(items); setSearched(true); setWork(options.selected ?? ''); setWorkOptions(options.items ?? []);
+      setRows(items); setSearched(true); setWork(options.selected ?? ''); setWorkOptions(options.items ?? []); setHouseUk(options.house_uk ?? null);
     } })
       .catch((e: unknown) => { if (active) setError(e instanceof Error ? e.message : 'Не удалось найти площадки'); })
       .finally(() => { if (active) setBusy(false); });
@@ -51,6 +62,8 @@ export const KpSuggestions: React.FC<{ id: string }> = ({ id }) => {
       await useIncidentStore.getState().refresh();
       const query = street.trim() && house.trim() ? '?' + new URLSearchParams({ street: street.trim(), house: house.trim() }) : '';
       setRows(await http<Candidate[]>(API_URL!, `/cases/${encodeURIComponent(id)}/kp-candidates${query}`));
+      const options = await http<WorkOptions>(API_URL!, `/cases/${encodeURIComponent(id)}/work-options`);
+      setHouseUk(options.house_uk ?? null);
     } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось выбрать вид работы'); }
     finally { setBusy(false); }
   }
@@ -60,6 +73,8 @@ export const KpSuggestions: React.FC<{ id: string }> = ({ id }) => {
       await http(API_URL!, `/cases/${encodeURIComponent(id)}/kp`, { method: 'PUT', body: { kp: row.code } });
       await useIncidentStore.getState().refresh();
       setSelected(row.code);
+      const options = await http<WorkOptions>(API_URL!, `/cases/${encodeURIComponent(id)}/work-options`);
+      setHouseUk(options.house_uk ?? null);
     } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось выбрать площадку'); }
     finally { setBusy(false); }
   }
@@ -73,6 +88,13 @@ export const KpSuggestions: React.FC<{ id: string }> = ({ id }) => {
           {workOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
         </select>
       </label>
+      {work && <p className="mb-3 rounded border border-border p-2 text-xs text-muted-foreground">{WORK_HINT[work]}</p>}
+      {houseUk && <div className="mb-3 rounded border border-border p-2 text-xs" aria-label="УК точного дома по Домовому">
+        <strong>{(houseUk.organization?.name || houseUk.source_organization?.name) ? `УК точного дома: ${houseUk.organization?.name || houseUk.source_organization?.name}` : 'УК дома по данным Домового'}</strong>
+        <p className="my-1 text-muted-foreground">{houseUk.reason}</p>
+        <p className="my-1 text-muted-foreground">{houseUk.routing_note}</p>
+        {houseUk.status === 'matched' && houseUk.eligible && <p className="my-1 text-warning">Предложение требует подтверждения инспектора; владельцем КП УК автоматически не становится.</p>}
+      </div>}
       <form onSubmit={search} className="flex flex-wrap gap-2">
         <label className="flex min-w-0 flex-1 flex-col text-xs">Улица
           <input required value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Например, Ангарская" className="mt-1 rounded border border-border bg-background p-2 text-sm" />
