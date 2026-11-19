@@ -176,6 +176,39 @@ const SourceMark: React.FC<{ source: IncidentSource }> = ({ source }) => (
   />
 );
 
+// Переключатель источника: «Все / ПОС / Домовой чат» — фильтрует ленту, карту и счётчики.
+// Источники — только те, что есть в данных, по убыванию числа обращений.
+const SourceSwitch: React.FC<{ className?: string }> = ({ className = '' }) => {
+  const source = useFilterStore((s) => s.source);
+  const set = useFilterStore((s) => s.set);
+  const forSources = useFilteredIncidents({ ignoreSource: true });
+  const sources = useMemo(() => {
+    const n = new Map<IncidentSource, number>();
+    forSources.forEach((i) => n.set(i.source, (n.get(i.source) ?? 0) + 1));
+    return [...n.entries()].sort((a, b) => b[1] - a[1]);
+  }, [forSources]);
+  if (sources.length < 2 && source === 'all') return null;
+  return (
+    <div role="group" aria-label="Источник" className={`flex items-stretch gap-1 rounded-xl border border-border bg-[var(--inset)] p-1 ${className}`}>
+      {[['all', forSources.length] as const, ...sources].map(([id, n]) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => set({ source: id })}
+          aria-pressed={source === id}
+          className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${
+            source === id ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground'
+          }`}
+        >
+          {id !== 'all' && <SourceMark source={id} />}
+          {id === 'all' ? 'Все' : SOURCE_TITLE[id] ?? id}
+          <span className="font-num text-[11.5px] opacity-80">{n}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
 const FeedRow: React.FC<{ incident: IIncident; now: number; selected: boolean; onSelect: () => void }> = ({
   incident,
   now,
@@ -302,16 +335,9 @@ const LeftPanel: React.FC<{ onHide: () => void }> = ({ onHide }) => {
   const now = useNow(30_000);
   const all = useIncidentStore((s) => s.incidents);
   const { selectedIncident, selectIncident } = useIncidentStore();
-  const { status, source, query, set } = useFilterStore();
+  const { status, query, set } = useFilterStore();
   const forCounts = useFilteredIncidents({ ignoreStatus: true });
-  const forSources = useFilteredIncidents({ ignoreSource: true });
   const list = useFilteredIncidents();
-  // Источники — только те, что есть в данных (ПОС, Домовой, обход…), по убыванию числа обращений
-  const sources = useMemo(() => {
-    const n = new Map<IncidentSource, number>();
-    forSources.forEach((i) => n.set(i.source, (n.get(i.source) ?? 0) + 1));
-    return [...n.entries()].sort((a, b) => b[1] - a[1]);
-  }, [forSources]);
 
   const summary = summarizeIncidents(all, now);
   const counts = countByStatus(forCounts);
@@ -380,6 +406,7 @@ const LeftPanel: React.FC<{ onHide: () => void }> = ({ onHide }) => {
             </button>
           </span>
         </div>
+        <SourceSwitch />
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -399,25 +426,6 @@ const LeftPanel: React.FC<{ onHide: () => void }> = ({ onHide }) => {
           {chip('all', 'Все', forCounts.length)}
           {STATUS_ORDER.map((s) => chip(s, STATUS_META[s].short, counts[s]))}
         </div>
-        {(sources.length > 1 || source !== 'all') && (
-          <div className="-mx-1 flex flex-wrap items-center gap-1" role="group" aria-label="Источник">
-            {[['all', forSources.length] as const, ...sources].map(([id, n]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => set({ source: id })}
-                aria-pressed={source === id}
-                className={`flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] transition-colors ${
-                  source === id ? 'bg-[var(--chip-on)] text-foreground ring-1 ring-[var(--chip-ring)]' : 'text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground'
-                }`}
-              >
-                {id !== 'all' && <SourceMark source={id} />}
-                {id === 'all' ? 'Все источники' : SOURCE_TITLE[id] ?? id}
-                <span className="font-num text-[11px] opacity-80">{n}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       <ul className="m-0 min-h-0 flex-1 list-none space-y-0.5 overflow-y-auto p-2 pt-1 max-lg:max-h-[420px]">
@@ -632,6 +640,13 @@ export const DispatchLayout: React.FC = () => {
                 <AttentionPanel onHide={() => togglePanel('right')} />
               )}
             </div>
+          </div>
+
+          {/* Над картой по центру — какой источник показывать: ПОС, Домовой или все */}
+          <div className="pointer-events-none absolute left-1/2 top-[84px] z-10 hidden -translate-x-1/2 xl:block">
+            <Glass className="pointer-events-auto rounded-2xl p-1">
+              <SourceSwitch className="border-0 bg-transparent p-0" />
+            </Glass>
           </div>
 
           {/* Нижняя полоса карты: легенда по центру, справа — подпись OpenStreetMap, её закрывать нельзя */}
