@@ -5,6 +5,7 @@ import { STATUS_META } from '../../lib/presentation';
 import { StatusTag } from '../StatusTag';
 import { useCardModel, sourceLine } from './cardModel';
 import { CardActions } from './CardActions';
+import { KpSuggestions } from './KpSuggestions';
 import { ReportMeta } from './PhotoReportForm';
 import { AiToggle, HistoryList, KpValue, PhotoEvidence, PosAppeal, ResponsiblesList, SlaMeter } from './parts';
 
@@ -105,6 +106,8 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
             </>
           )}
         </div>
+
+        {role === 'INSPECTOR' && inc.status === 'NEW' && inc.source === 'POS' && <KpSuggestions key={inc.id} id={inc.id} />}
 
         <Section title="Ответственные">
           <ResponsiblesList incident={inc} />
