@@ -9,7 +9,7 @@ type Candidate = {
 };
 
 type HouseUk = { status: string; reason: string; routing_note: string; eligible: boolean;
-  organization?: { id: string; name: string } };
+  organization?: { id: string; name: string }; source_organization?: { name?: string } };
 type WorkOptions = { selected: string | null; items: { id: string; name: string }[]; house_uk?: HouseUk };
 const WORK_HINT: Record<string, string> = {
   waste_removal: 'Вывоз: нужен оператор вывоза для этой КП. УК дома по адресу не подставляется.',
