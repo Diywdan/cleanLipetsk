@@ -86,6 +86,7 @@ export interface IOrganization {
 }
 
 export type ResponsibleRole =
+  | 'container_maintenance' // ремонт контейнера
   | 'site_maintenance'   // содержание площадки и уборка вокруг
   | 'waste_removal'      // вывоз
   | 'new_site_decision'  // создание и перенос площадки
@@ -142,6 +143,8 @@ export interface IPosAppeal {
   lastReplyAt?: string;
   lastReply?: string;       // кто ответил последним
   responsible?: string;
+  mainResponsible?: string;
+  executiveResponsible?: string;
   managementCompany?: string;
   category?: string;
   fz59?: boolean;

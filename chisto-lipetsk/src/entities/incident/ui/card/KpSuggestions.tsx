@@ -15,13 +15,19 @@ export const KpSuggestions: React.FC<{ id: string }> = ({ id }) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
+  const [work, setWork] = useState('');
+  const [workOptions, setWorkOptions] = useState<{ id: string; name: string }[]>([]);
   const [selected, setSelected] = useState('');
   useEffect(() => {
     if (!API_URL) return;
     let active = true;
     setBusy(true);
-    http<Candidate[]>(API_URL, `/cases/${encodeURIComponent(id)}/kp-candidates`)
-      .then((items) => { if (active) { setRows(items); setSearched(true); } })
+    Promise.all([
+      http<Candidate[]>(API_URL, `/cases/${encodeURIComponent(id)}/kp-candidates`),
+      http<{ selected: string | null; items: { id: string; name: string }[] }>(API_URL, `/cases/${encodeURIComponent(id)}/work-options`),
+    ]).then(([items, options]) => { if (active) {
+      setRows(items); setSearched(true); setWork(options.selected ?? ''); setWorkOptions(options.items ?? []);
+    } })
       .catch((e: unknown) => { if (active) setError(e instanceof Error ? e.message : 'Не удалось найти площадки'); })
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
@@ -37,6 +43,17 @@ export const KpSuggestions: React.FC<{ id: string }> = ({ id }) => {
     } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось найти площадки'); }
     finally { setBusy(false); }
   }
+  async function chooseWork(value: string) {
+    setBusy(true); setError(''); setSelected('');
+    try {
+      await http(API_URL!, `/cases/${encodeURIComponent(id)}/work-kind`, { method: 'PUT', body: { work_kind: value } });
+      setWork(value);
+      await useIncidentStore.getState().refresh();
+      const query = street.trim() && house.trim() ? '?' + new URLSearchParams({ street: street.trim(), house: house.trim() }) : '';
+      setRows(await http<Candidate[]>(API_URL!, `/cases/${encodeURIComponent(id)}/kp-candidates${query}`));
+    } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось выбрать вид работы'); }
+    finally { setBusy(false); }
+  }
   async function choose(row: Candidate) {
     setBusy(true); setError('');
     try {
@@ -50,6 +67,12 @@ export const KpSuggestions: React.FC<{ id: string }> = ({ id }) => {
     <section className="rounded-lg border border-border bg-[var(--inset)] p-3" aria-label="Подбор площадки и ответственного">
       <h3 className="m-0 text-sm font-semibold">Подбор КП и ответственного</h3>
       <p className="mt-1 text-xs text-muted-foreground">Укажите улицу и дом. Поиск рядом с точкой обращения, до 2 км. Выбор КП не направляет дело исполнителю — подтвердите его внизу карточки.</p>
+      <label className="mb-3 flex flex-col gap-1 text-xs">Что нужно сделать
+        <select aria-label="Вид работы" value={work} disabled={busy} onChange={(e) => chooseWork(e.target.value)} className="rounded border border-border bg-background p-2 text-sm">
+          <option value="" disabled>Уточните вид работы</option>
+          {workOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+        </select>
+      </label>
       <form onSubmit={search} className="flex flex-wrap gap-2">
         <label className="flex min-w-0 flex-1 flex-col text-xs">Улица
           <input required value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Например, Ангарская" className="mt-1 rounded border border-border bg-background p-2 text-sm" />
