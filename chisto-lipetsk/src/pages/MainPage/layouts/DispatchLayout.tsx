@@ -176,18 +176,17 @@ const SourceMark: React.FC<{ source: IncidentSource }> = ({ source }) => (
   />
 );
 
-// Переключатель источника: «Все / ПОС / Домовой чат» — фильтрует ленту, карту и счётчики.
-// Источники — только те, что есть в данных, по убыванию числа обращений.
+// Переключатель источника фильтрует ленту, карту и счётчики.
+// Бот ДРТ остаётся доступным в фильтре даже при нулевом числе дел.
 const SourceSwitch: React.FC<{ className?: string }> = ({ className = '' }) => {
   const source = useFilterStore((s) => s.source);
   const set = useFilterStore((s) => s.set);
   const forSources = useFilteredIncidents({ ignoreSource: true });
   const sources = useMemo(() => {
-    const n = new Map<IncidentSource, number>();
+    const n = new Map<IncidentSource, number>([['DRT_BOT', 0]]);
     forSources.forEach((i) => n.set(i.source, (n.get(i.source) ?? 0) + 1));
     return [...n.entries()].sort((a, b) => b[1] - a[1]);
   }, [forSources]);
-  if (sources.length < 2 && source === 'all') return null;
   return (
     <div role="group" aria-label="Источник" className={`flex items-stretch gap-1 rounded-xl border border-border bg-[var(--inset)] p-1 ${className}`}>
       {[['all', forSources.length] as const, ...sources].map(([id, n]) => (
