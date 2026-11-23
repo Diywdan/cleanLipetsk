@@ -46,6 +46,7 @@ export const SOURCE_TITLE: Record<IncidentSource, string> = {
   SED: 'СЭД',
   OMSU_CHAT: 'Чат ОМСУ',
   INSPECTION: 'Обход инспектора',
+  DRT_BOT: 'Бот ДРТ',
   DELO_WEB: 'Дело-web',
   GOVERNOR_PORTAL: 'Портал губернатора',
   HOUSE_CHATS: 'Домовой чат',
