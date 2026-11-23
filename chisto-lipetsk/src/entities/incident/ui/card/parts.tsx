@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { IIncident, IHistoryEvent } from '../../types';
 import { ImageCompareSlider } from '@/shared/components/image-slider/ImageCompareSlider';
 import { ORGANIZATION_KIND_TITLE, RESPONSIBLE_ROLE_TITLE } from '../../lib/responsibles';
 import { SOURCE_TITLE, formatDateTime, typoQuotes } from '../../lib/presentation';
 import { slaShare } from './cardModel';
-import { Bot, Building2, Settings, User } from 'lucide-react';
+import { Bot, Building2, Settings, User, ZoomIn } from 'lucide-react';
+import { PhotoViewer } from './PhotoViewer';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Части карточки обращения; оболочка DispatchCard собирает из них свою композицию.
@@ -28,6 +29,12 @@ export const PhotoEvidence: React.FC<{
   showAi: boolean;
 }> = ({ incident, showAi }) => {
   const { media, location, source, timeline } = incident;
+  const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; label: string } | null>(null);
+  const photos = [
+    { url: media.photoBeforeUrl, label: 'Фото нарушения' },
+    { url: media.photoAfterUrl, label: 'Фото после устранения' },
+  ].filter((photo): photo is { url: string; label: string } => Boolean(photo.url));
+  const singlePhoto = photos.length === 1 ? photos[0] : null;
   const boxColor = 'var(--st-knm)';
   const frame = 'rounded-lg bg-black ring-1 ring-border';
 
@@ -78,11 +85,38 @@ export const PhotoEvidence: React.FC<{
     <figure className="m-0">
       <div className={`relative overflow-hidden ${frame}`}>
         {picture}
+        {singlePhoto && (
+          <button
+            type="button"
+            className="absolute inset-0 z-40 cursor-zoom-in focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+            aria-label={`Увеличить: ${singlePhoto.label}`}
+            onClick={() => setSelectedPhoto(singlePhoto)}
+          >
+            <span className="absolute right-3 top-3 grid size-9 place-items-center rounded-md bg-black/65 text-white" aria-hidden="true">
+              <ZoomIn className="size-5" />
+            </span>
+          </button>
+        )}
         <HudCorners />
         <span className="font-num pointer-events-none absolute bottom-2.5 left-3 z-30 rounded bg-black/55 px-1.5 py-0.5 text-[11px] text-white/85">
           {(SOURCE_TITLE[source] ?? source).toUpperCase()} · {formatDateTime(timeline.createdAt)}
         </span>
       </div>
+      {photos.length === 2 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {photos.map((photo) => (
+            <button key={photo.label} type="button" onClick={() => setSelectedPhoto(photo)}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs hover:bg-[var(--hover)]"
+            >
+              <ZoomIn className="size-4" aria-hidden="true" />
+              {photo.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {selectedPhoto && (
+        <PhotoViewer url={selectedPhoto.url} title={selectedPhoto.label} onClose={() => setSelectedPhoto(null)} />
+      )}
     </figure>
   );
 };
