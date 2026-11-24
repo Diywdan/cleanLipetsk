@@ -6,6 +6,7 @@ import { StatusTag } from '../StatusTag';
 import { useCardModel, sourceLine } from './cardModel';
 import { CardActions } from './CardActions';
 import { KpSuggestions } from './KpSuggestions';
+import { LocationContext } from './LocationContext';
 import { ReportMeta } from './PhotoReportForm';
 import { AiToggle, HistoryList, KpValue, PhotoEvidence, PosAppeal, ResponsiblesList, SlaMeter } from './parts';
 
@@ -58,7 +59,7 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
         </div>
         <h2 className="mt-3 flex items-start gap-2 text-[19px] font-semibold leading-snug text-foreground">
           <MapPin className="mt-1 size-4 shrink-0 text-primary" />
-          {inc.location.address}
+          {inc.location.address || 'Адрес точки уточняется'}
         </h2>
         <p className="font-num m-0 mt-1 text-[12px] text-muted-foreground">{sourceLine(inc)}</p>
       </header>
@@ -89,7 +90,7 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
         )}
 
         <Section title="Фотофиксация" aside={!inc.media.photoAfterUrl && <AiToggle checked={m.showAi} onChange={m.setShowAi} />}>
-          <PhotoEvidence incident={inc} showAi={m.showAi} />
+          <PhotoEvidence key={inc.id} incident={inc} showAi={m.showAi} />
           <ReportMeta incident={inc} />
         </Section>
 
@@ -106,6 +107,9 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
             </>
           )}
         </div>
+
+        <LocationContext key={`${inc.id}:${inc.kp?.kpId ?? ''}:${inc.violationType?.id ?? ''}`}
+          incidentId={inc.id} canLink={role === 'INSPECTOR' && inc.status === 'NEW' && inc.source === 'DRT_BOT'} />
 
         {role === 'INSPECTOR' && inc.status === 'NEW' && inc.source === 'POS' && <KpSuggestions key={inc.id} id={inc.id} />}
 

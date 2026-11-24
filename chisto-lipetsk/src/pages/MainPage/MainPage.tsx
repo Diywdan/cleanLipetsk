@@ -14,7 +14,7 @@ export const MainPage: React.FC = () => {
   // Esc закрывает открытое дело
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") selectIncident(null);
+      if (e.key === "Escape" && !document.querySelector("dialog[open]")) selectIncident(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
