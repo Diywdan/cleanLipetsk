@@ -6,7 +6,8 @@ import { StatusTag } from '../StatusTag';
 import { useCardModel, sourceLine } from './cardModel';
 import { CardActions } from './CardActions';
 import { KpSuggestions } from './KpSuggestions';
-import { LocationContext } from './LocationContext';
+import { LocationContext, useLocationContext } from './LocationContext';
+import { ExecutorExplanation } from './ExecutorExplanation';
 import { ReportMeta } from './PhotoReportForm';
 import { AiToggle, HistoryList, KpValue, PhotoEvidence, PosAppeal, ResponsiblesList, SlaMeter } from './parts';
 
@@ -31,8 +32,13 @@ const Section: React.FC<{ title: string; aside?: React.ReactNode; children: Reac
 
 export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
   const m = useCardModel();
-  if (!m.incident) return null;
   const inc = m.incident;
+  const revision = JSON.stringify([
+    inc?.id, inc?.status, inc?.kp?.kpId, inc?.kp?.method, inc?.violationType?.id,
+    m.primary?.organization.id, inc?.timeline.history?.at(-1)?.id,
+  ]);
+  const { context, error, loading } = useLocationContext(inc?.id, revision);
+  if (!inc) return null;
   const tone = STATUS_META[inc.status].dot;
   const repeats = m.primary?.recidivismCount ?? 0;
 
@@ -108,8 +114,10 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
           )}
         </div>
 
-        <LocationContext key={`${inc.id}:${inc.kp?.kpId ?? ''}:${inc.violationType?.id ?? ''}`}
+        <LocationContext key={inc.id} context={context} loadError={error}
           incidentId={inc.id} canLink={role === 'INSPECTOR' && inc.status === 'NEW' && inc.source === 'DRT_BOT'} />
+
+        {context?.executorProposal && <ExecutorExplanation proposal={context.executorProposal} />}
 
         {role === 'INSPECTOR' && inc.status === 'NEW' && inc.source === 'POS' && <KpSuggestions key={inc.id} id={inc.id} />}
 
@@ -124,7 +132,8 @@ export const DispatchCard: React.FC<{ role: UserRole }> = ({ role }) => {
 
       <footer className="shrink-0 border-t border-border bg-[var(--inset)] px-5 py-4">
         {/* key: при переключении дела сбрасываем шаги «почему ложное» / «что доделать» */}
-        <CardActions key={`${inc.id}:${inc.violationType?.id ?? ""}`} incident={inc} role={role} />
+        <CardActions key={`${inc.id}:${inc.violationType?.id ?? ""}`} incident={inc} role={role}
+          proposalToken={context?.executorProposal?.token} loadingProposal={loading} />
       </footer>
     </article>
   );

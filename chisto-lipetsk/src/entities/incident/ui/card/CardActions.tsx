@@ -23,12 +23,18 @@ import { getKnmPackageDocuments } from '../../lib/knmPackage';
 
 const DISMISS_REASONS = ['Нарушения на снимке нет', 'Повторное обращение', 'Не территория площадки'] as const;
 
-export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({ incident, role }) => {
+export const CardActions: React.FC<{
+  incident: IIncident;
+  role: UserRole;
+  proposalToken?: string;
+  loadingProposal: boolean;
+}> = ({ incident, role, proposalToken, loadingProposal }) => {
   const { id, status, source } = incident;
   const now = useNow(30_000);
   const s = useIncidentStore();
   const [deadline, setDeadline] = useState<DeadlineHours>(48);
   const [remember, setRemember] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [step, setStep] = useState<'dismiss' | 'return' | null>(null);
   const [comment, setComment] = useState('');
   const [generatingKnmPackage, setGeneratingKnmPackage] = useState(false);
@@ -47,6 +53,15 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
 
   const actor: Actor = { kind: 'USER', role, name: '' };
   const allowed = (a: IncidentAction) => can(a, incident, actor, now);
+
+  async function confirm() {
+    setConfirming(true);
+    try {
+      await s.confirmIncident(id, deadline, { ...reassign.payload, rememberResponsible: remember, proposalToken });
+    } finally {
+      setConfirming(false);
+    }
+  }
 
   // Длинные подписи переносятся, а не обрезаются
   const btn = 'h-auto min-h-10 whitespace-normal py-2 text-[14px]';
@@ -142,8 +157,8 @@ export const CardActions: React.FC<{ incident: IIncident; role: UserRole }> = ({
             <Button variant="outline" onClick={() => setStep('dismiss')} className={`${secondary} text-danger`}>
               Ложное срабатывание
             </Button>
-            <Button onClick={() => s.confirmIncident(id, deadline, { ...reassign.payload, rememberResponsible: remember })} disabled={!reassign.valid} className={primary}>
-              Подтвердить и направить исполнителю
+            <Button onClick={() => void confirm()} disabled={!reassign.valid || loadingProposal || confirming} className={primary}>
+              {confirming ? 'Подтверждаем…' : 'Подтвердить и направить исполнителю'}
             </Button>
           </div>
         </div>
