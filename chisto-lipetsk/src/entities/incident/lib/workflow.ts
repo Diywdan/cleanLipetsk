@@ -25,7 +25,7 @@ export type Actor =
 export type ActionPayload = {
   // executorId и typeViolationId — инспектор поправил исполнителя или тип по справочнику CRM;
   // справочник есть только в CRM, макет без бэкенда их не присылает
-  CONFIRM: { deadlineHours: DeadlineHours; executorId?: string; typeViolationId?: string; rememberResponsible?: boolean };
+  CONFIRM: { deadlineHours: DeadlineHours; executorId?: string; typeViolationId?: string; rememberResponsible?: boolean; proposalToken?: string };
   DISMISS: { reason?: string };
   SUBMIT_REPORT: { report: IPhotoReport };
   APPROVE: Record<string, never>;

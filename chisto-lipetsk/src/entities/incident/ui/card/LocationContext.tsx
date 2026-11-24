@@ -3,6 +3,18 @@ import { API_URL, http } from '@/shared/api/http';
 import { useIncidentStore } from '../../model/incidentStore';
 
 type Site = { code: string; address: string | null };
+export type ExecutorProposal = {
+  executor: { id: string; name: string } | null;
+  violationType: string | null;
+  source: string | null;
+  reason: string;
+  place: { kind: 'house' | 'site'; address: string | null; code?: string; match?: string | null } | null;
+  status: 'pending' | 'confirmed' | 'missing';
+  confirmedBy?: string;
+  confirmedAt?: string;
+  token?: string;
+};
+
 type Context = {
   houseAddress: string | null;
   nearbyHouseAddress: string | null;
@@ -10,31 +22,42 @@ type Context = {
   isWasteSiteIssue: boolean;
   linkedSite: Site | null;
   nearbySites: (Site & { distanceMeters: number })[];
+  executorProposal?: ExecutorProposal;
 };
 
-export function LocationContext({ incidentId, canLink }: { incidentId: string; canLink: boolean }) {
-  const [context, setContext] = useState<Context | null>(null);
-  const [error, setError] = useState('');
-  const [linking, setLinking] = useState(false);
-
+export function useLocationContext(incidentId: string | undefined, revision: string) {
+  const [loaded, setLoaded] = useState<{ revision: string; context: Context | null; error: string } | null>(null);
   useEffect(() => {
-    if (!API_URL) return;
+    if (!API_URL || !incidentId) return;
     let current = true;
     http<Context>(API_URL, `/incidents/${encodeURIComponent(incidentId)}/location-context`)
-      .then((result) => { if (current) setContext(result); })
-      .catch(() => { if (current) setError('Не удалось загрузить данные о месте'); });
+      .then((context) => { if (current) setLoaded({ revision, context, error: '' }); })
+      .catch(() => { if (current) setLoaded({ revision, context: null, error: 'Не удалось загрузить место и основание подбора' }); });
     return () => { current = false; };
-  }, [incidentId]);
+  }, [incidentId, revision]);
+  const state = loaded?.revision === revision ? loaded : null;
+  return { context: state?.context ?? null, error: state?.error ?? '', loading: Boolean(API_URL && incidentId && !state) };
+}
+
+export function LocationContext({ incidentId, canLink, context, loadError }: {
+  incidentId: string;
+  canLink: boolean;
+  context: Context | null;
+  loadError: string;
+}) {
+  const [linkError, setLinkError] = useState('');
+  const [linking, setLinking] = useState(false);
+  const error = loadError || linkError;
 
   async function link(site: Site) {
     if (!API_URL) return;
     setLinking(true);
-    setError('');
+    setLinkError('');
     try {
       await http(API_URL, `/cases/${encodeURIComponent(incidentId)}/kp`, { method: 'PUT', body: { kp: site.code } });
       await useIncidentStore.getState().refresh();
     } catch {
-      setError('Не удалось привязать площадку');
+      setLinkError('Не удалось привязать площадку');
     } finally {
       setLinking(false);
     }
